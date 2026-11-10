@@ -46,6 +46,10 @@ export function diffSnapshots(base: Snapshot, now: Snapshot): Change[] {
   const out: Change[] = []
   for (const c of now.channels) {
     const was = base.channels.find((x) => x.id === c.id)
+    if (!was) {
+      out.push({ where: `Ch ${c.id} ${c.name}`.trim(), what: 'Added', from: '-', to: `${c.copyOf ? `copy of Ch ${c.copyOf}, ` : ''}input ${c.hasSource ? `${c.source.grp} ${c.source.in}` : 'none'}` })
+      continue
+    }
     if (was) out.push(...compare(`Ch ${c.id} ${c.name}`.trim(), channelValues(was), channelValues(c)))
   }
   for (const b of now.buses) {

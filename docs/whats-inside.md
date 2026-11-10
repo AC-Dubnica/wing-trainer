@@ -20,6 +20,7 @@ src/
     diff.ts              the list of changes against the snapshot
     multitrack.ts        which recorded track plays on which channel
     flow.ts              the signal-flow graph and the path through it
+    duplicate.ts         copies a channel to a free channel number and a new input
   renderer/
     app.ts               the screen: strips, knobs, graphs, dialogs, meters
     engine.ts            the audio graph
@@ -76,6 +77,10 @@ The console's USB recorder writes one track per recorder output. The snapshot sa
 3. every channel whose source is that input plays the track (two channels can share one receiver).
 
 When the routing is edited in the Routing tab, this is done again, so a track follows its input from fader to fader.
+
+## Copying a channel
+
+`duplicate.ts` clones a channel (a deep copy, so the two are independent), gives it the lowest free channel number (the console has 40), the new input and a name, and marks it `copyOf` the original. The screen puts it next to the original on the faders, rebuilds the audio graph and the Routing tab, and the change list reports it as added. Because a recording is placed by input (see above), a track recorded on that input plays on the copy as well.
 
 ## The Routing tab
 

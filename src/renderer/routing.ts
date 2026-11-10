@@ -1,5 +1,5 @@
 import { buildFlow, trace, type FlowEdge, type FlowNode } from '../shared/flow'
-import { INPUT_GROUPS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
+import { INPUT_GROUPS, INPUT_PORTS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
 
 export interface RoutingDeps {
   snap(): Snapshot
@@ -125,7 +125,7 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     n.onchange = () => onChange(Math.min(max, Math.max(1, Math.round(Number(n.value) || 1))))
     return n
   }
-  const inputMax = (grp: string): number => ({ LCL: 24, AUX: 8, A: 48, B: 48, C: 48, SC: 32, USB: 48, CRD: 64, MOD: 64, PLAY: 4, AES: 2, USR: 48, OSC: 2 })[grp] ?? 48
+  const inputMax = (grp: string): number => INPUT_PORTS[grp] ?? 48
   const sourceMax = (grp: string): number => (grp === 'MAIN' ? 4 : grp === 'MTX' ? 8 : grp === 'BUS' ? 25 : grp === 'MON' ? 2 : inputMax(grp))
 
   function fadersTable(): HTMLElement {

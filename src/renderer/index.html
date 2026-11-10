@@ -87,6 +87,7 @@
       .finding { padding: 4px 0; user-select: text } .finding.warn::before { content: '⚠ '; color: var(--amber) } .finding.note::before { content: '• '; color: var(--dim) }
       footer { display: flex; gap: 16px; padding: 5px 14px; color: var(--dim); background: #07090b; border-top: 1px solid var(--line); min-height: 26px; font-size: 11px } footer #msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis } footer #src { color: var(--amber); white-space: nowrap }
       dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: min(720px, 90vw); max-height: 80vh } dialog::backdrop { background: #000a }
+      .copyrow { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 8px 0 } .copyrow input { background: var(--raised); border: 1px solid var(--line); border-radius: 3px; color: var(--text); padding: 3px 6px; font: inherit } .copyrow input[type=number] { width: 64px } .flat.primary { background: var(--blue); border-color: var(--blue) }
       dialog h3 { margin: 0 0 10px; letter-spacing: .08em } dialog .body { overflow: auto; max-height: 55vh; margin-bottom: 12px } dialog .btns { display: flex; gap: 8px; justify-content: flex-end }
     </style>
   </head>

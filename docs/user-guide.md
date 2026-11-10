@@ -62,6 +62,10 @@ The snapshot says which input each recorder track took, and which channels liste
 
 **Knobs.** Drag a knob up or down to turn it (hold **Shift** for fine steps), or use the mouse wheel, or click it and use the arrow keys. **Double-click** puts it back to the value it had when the snapshot was loaded. A greyed knob belongs to a section that is switched off.
 
+**Copy a channel to a new input.** With a channel selected, **COPY TO A NEW INPUT…** (top right of its panel) makes a copy of the whole strip: EQ, gate, compressor, filters, trim, fader, pan, mute, the sends to buses and the assignments to mains. You choose the input the copy listens to (a group such as `C` and a port; the app suggests the next port nobody uses) and its name. The copy takes the lowest free channel number (the console has 40) and stands next to the original on the faders. It is independent: changing it does not change the original. If a recording is open, the track recorded on that input plays on the copy. The copy shows in **CHANGES** (`Ch 4 SINGER 1 copy: Added - -> copy of Ch 13, input C 10`) and **RESET** removes it.
+
+![The copy dialog](copy.png)
+
 ## The Routing view
 
 **ROUTING** shows how the whole venue is organised, drawn from the snapshot. Four columns, left to right:

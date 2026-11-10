@@ -3,8 +3,9 @@ import type { TrainerApi } from '../preload/index'
 import { checkSnapshot, type Finding } from '../shared/checks'
 import { compCurve, eqCurve, gateCurve } from '../shared/curves'
 import { describeChange, diffSnapshots } from '../shared/diff'
+import { duplicateChannel, nextFreePort } from '../shared/duplicate'
 import type { Channel, Snapshot } from '../shared/model'
-import { OFF_DB } from '../shared/model'
+import { INPUT_GROUPS, INPUT_PORTS, MAX_CHANNELS, OFF_DB } from '../shared/model'
 import { mapTracks } from '../shared/multitrack'
 import { parseSnapshot } from '../shared/snapshot'
 import { dbAt, FADER_MAX, FADER_MIN, posOf } from '../shared/fader'
@@ -49,6 +50,8 @@ const stripUi = new Map<string, StripUi>()
 const keyOf = (kind: string, id: number): string => `${kind}:${id}`
 
 const POS_MAX = 1000
+/** Whether the faders were reordered (channels that were copied in the trainer do not count). */
+const orderChanged = (): boolean => order.filter((id) => baseOrder.includes(id)).join() !== baseOrder.join()
 const dbText = (v: number): string => (v <= OFF_DB ? '-∞' : `${v > 0 ? '+' : ''}${v.toFixed(1)}`)
 /** The slider value (0 to POS_MAX) as a level in dB, rounded to 0.1; the bottom of the travel is "off". */
 const faderToDb = (slider: number): number => (slider <= 2 ? -144 : Math.round(dbAt(slider / POS_MAX) * 10) / 10)
@@ -568,7 +571,7 @@ function buildDetail(): void {
   $('detail').replaceChildren(
     el('div', { class: 'dhead' }, el('span', { class: 'cn', textContent: `CH ${c.id}` }), tag, el('span', { class: 'dim', textContent: c.hasSource ? `input ${c.source.grp}${c.source.in}` : 'no input patched' }),
       ...(notes.length ? [el('span', { class: 'nb', title: notes.map((n) => n.text).join('\n'), textContent: `⚠ ${notes.length}` })] : []),
-      el('span', { class: 'grow' }), el<HTMLButtonElement>('button', { class: 'flat', textContent: 'PLAY A FILE ON THIS CHANNEL…', onclick: () => void openFileOnChannel() })),
+      el('span', { class: 'grow' }), el<HTMLButtonElement>('button', { class: 'flat', textContent: 'COPY TO A NEW INPUT…', title: 'Make a copy of this channel on a free channel number that listens to another input', onclick: () => showCopy(c) }), el<HTMLButtonElement>('button', { class: 'flat', textContent: 'PLAY A FILE ON THIS CHANNEL…', onclick: () => void openFileOnChannel() })),
     el('div', { class: 'sections' }, ...channelDetail(c)))
 }
 
@@ -614,7 +617,7 @@ function buildTop(): void {
 
 function refreshTop(): void {
   const findings = checkSnapshot(cur).length
-  const changes = diffSnapshots(base, cur).length + (order.join() !== baseOrder.join() ? 1 : 0)
+  const changes = diffSnapshots(base, cur).length + (orderChanged() ? 1 : 0)
   checksBtn.replaceChildren('CHECKS', ...(findings ? [el('span', { class: 'badge', textContent: String(findings) })] : []))
   changesBtn.replaceChildren('CHANGES', ...(changes ? [el('span', { class: 'badge', textContent: String(changes) })] : []))
   $('src').textContent = `${sourceName}${recording ? ' · recording' : ' · test signals'}`
@@ -657,9 +660,44 @@ function showChecks(): void {
   dialog('Checks', el('div', {}, ...(findings.length ? findings.map(findingRow) : [el('div', { class: 'dim', textContent: 'No problems found in the settings.' })])))
 }
 
+function showCopy(c: Channel): void {
+  const dlg = $<HTMLDialogElement>('dlg')
+  const group = el<HTMLSelectElement>('select', {}, ...INPUT_GROUPS.map((g) => el<HTMLOptionElement>('option', { value: g, textContent: g, selected: g === (c.hasSource ? c.source.grp : 'C') })))
+  group.setAttribute('aria-label', 'Input group')
+  const startGroup = c.hasSource ? c.source.grp : 'C'
+  const port = el<HTMLInputElement>('input', { type: 'number', min: '1', max: String(INPUT_PORTS[startGroup] ?? 48), value: String(nextFreePort(cur, startGroup, c.hasSource ? c.source.in : 0, INPUT_PORTS[startGroup] ?? 48)) })
+  port.setAttribute('aria-label', 'Input port')
+  group.onchange = () => { port.max = String(INPUT_PORTS[group.value] ?? 48); port.value = String(nextFreePort(cur, group.value, 0, INPUT_PORTS[group.value] ?? 48)) }
+  const name = el<HTMLInputElement>('input', { type: 'text', maxLength: 16, value: `${c.name || `Ch ${c.id}`} copy` })
+  name.setAttribute('aria-label', 'Name of the copy')
+  const msg = el('div', { class: 'finding', textContent: '' })
+  const copy = el<HTMLButtonElement>('button', { class: 'flat primary', textContent: 'COPY', onclick: async () => {
+    const n = Math.min(INPUT_PORTS[group.value] ?? 48, Math.max(1, Math.round(Number(port.value) || 1)))
+    const r = duplicateChannel(cur, c.id, { grp: group.value, in: n }, name.value)
+    if (!r.ok) { msg.textContent = r.reason; return }
+    order.splice(order.indexOf(c.id) + 1, 0, r.channel.id)
+    dlg.close()
+    selected = r.channel.id
+    selectedOut = ''
+    buildStrips()
+    buildDetail()
+    routing.render()
+    await rebuildEngine()
+    refreshTop()
+    status(`Channel ${r.channel.id} ${r.channel.name} is a copy of channel ${c.id} ${c.name}, listening to ${group.value} ${n}.`)
+  } })
+  const free = MAX_CHANNELS - cur.channels.length
+  dlg.replaceChildren(el('h3', { textContent: `Copy channel ${c.id} ${c.name}` }),
+    el('div', { class: 'body' },
+      el('p', { class: 'dim', textContent: `The copy takes everything from this strip (EQ, gate, compressor, filters, fader, sends, main assignments) and listens to the input you choose. It goes on the next free channel number (${free} left) and next to this one on the faders.` }),
+      el('div', { class: 'copyrow' }, el('label', { textContent: 'Input ' }, group, ' ', port), el('label', { textContent: 'Name ' }, name)), msg),
+    el('div', { class: 'btns' }, el<HTMLButtonElement>('button', { class: 'flat', textContent: 'CANCEL', onclick: () => dlg.close() }), copy))
+  dlg.showModal()
+}
+
 function showChanges(): void {
   const lines = diffSnapshots(base, cur).map(describeChange)
-  if (order.join() !== baseOrder.join()) lines.push(`Fader order: ${order.map((id) => channel(id)?.name || id).join(', ')}`)
+  if (orderChanged()) lines.push(`Fader order: ${order.map((id) => channel(id)?.name || id).join(', ')}`)
   const copy = el<HTMLButtonElement>('button', { class: 'flat', textContent: 'COPY', onclick: () => void navigator.clipboard.writeText(lines.join('\n')) })
   dialog('What you changed', el('div', {}, el('p', { class: 'dim', textContent: 'The trainer does not write snapshots. Make these changes on the console to use them.' }), ...(lines.length ? lines.map((l) => el('div', { class: 'finding', textContent: l })) : [el('div', { class: 'dim', textContent: 'Nothing changed yet.' })])), lines.length ? [copy] : [])
 }
