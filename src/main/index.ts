@@ -199,6 +199,13 @@ ipcMain.handle('session:sample', () => {
 
 // For the tests: a real mouse click (made by the browser engine, with the modifier keys held), not a script's imitation of one.
 if (process.env.WING_TRAINER_EVAL) {
+  ipcMain.handle('test:key', (_e, keyCode: string, modifiers: string[]) => {
+    const wc = win?.webContents
+    if (!wc) return
+    const mods = modifiers as ('shift' | 'control' | 'alt' | 'meta')[]
+    wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers: mods })
+    wc.sendInputEvent({ type: 'keyUp', keyCode, modifiers: mods })
+  })
   ipcMain.handle('test:click', (_e, x: number, y: number, modifiers: string[]) => {
     const wc = win?.webContents
     if (!wc) return

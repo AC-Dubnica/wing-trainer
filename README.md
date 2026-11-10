@@ -34,6 +34,10 @@ git push --follow-tags     # the tag starts .github/workflows/release.yml
 
 The workflow builds the installers on macOS (Apple silicon and Intel), Windows and Linux, and attaches them to a GitHub release for the tag. **Run workflow** on the Actions tab builds them as downloadable files only, without a release. The builds are **not code-signed**, so the first start needs one extra step (the release notes say which). `.github/workflows/ci.yml` runs the types, the unit tests and the build on all three systems for every push, and the sound check under a virtual display on Linux.
 
+## Undo and redo
+
+**⌘Z** (Ctrl+Z) undoes and **⌘⇧Z** (Ctrl+Shift+Z, Ctrl+Y) redoes, step by step, for every change you make (a drag of a knob is one step). The ↶ UNDO and REDO ↷ buttons in the top bar do the same. See the [user guide](docs/user-guide.md#undo-and-redo).
+
 ## Save your edits as a snapshot
 
 **SAVE AS SNAPSHOT…** (top right, when you have opened your own snapshot) writes a **new snapshot file**: your original file with the edits written in. Only the values you changed are written; everything the trainer does not show (effects, DCA groups, layers, preamps) stays exactly as the console saved it, and the original file is never changed or overwritten. A list of the changes is saved beside it (`... (edited).changes.txt`). What it writes: channel settings (name, input, trim, fader, mute, pan, filters, EQ, gate, compressor, sends, main assignments), copied channels, added, renamed and removed buses and matrices, the mains' fader and mute, and the output patch. It does not write the order of the faders.

@@ -23,6 +23,7 @@ function el<T extends HTMLElement = HTMLElement>(tag: string, props: Partial<T> 
   e.append(...kids)
   return e
 }
+const isMacPlatform = /Mac/i.test(navigator.platform)
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 const sty = <T extends HTMLElement>(e: T, css: Partial<CSSStyleDeclaration>): T => { Object.assign(e.style, css); return e }
 
@@ -124,6 +125,8 @@ async function useSnapshot(snap: Snapshot, name: string, path = '', file: { raw:
   buildDetail()
   routing.render()
   await rebuildEngine()
+  resetHistory()
+  refreshUndo()
   status(`Loaded ${name}: ${cur.channels.length} channels, ${cur.buses.length} buses. Every channel plays a test signal until you open a recording.`)
 }
 
@@ -215,8 +218,104 @@ interface WorkState {
   recordingDir: string
 }
 
+// --- undo and redo ---------------------------------------------------------------------------------------------------------
+
+/** What an undo takes back: the edited snapshot and the order of the faders (not the selection or the open tab). */
+const stateKey = (): string => JSON.stringify({ cur, order })
+const history = { stack: [] as string[], index: -1, timer: null as ReturnType<typeof setTimeout> | null, restoring: false }
+const HISTORY_MAX = 200
+
+/** Starts the history from what is on screen now (a snapshot was opened, or the saved work was brought back). */
+function resetHistory(): void {
+  if (history.timer) clearTimeout(history.timer)
+  history.timer = null
+  history.stack = [stateKey()]
+  history.index = 0
+}
+
+/** Half a second after the last change it becomes one step of the history (dragging a knob is one step, not hundreds). */
+function commitSoon(): void {
+  if (history.restoring || !cur) return
+  if (history.timer) clearTimeout(history.timer)
+  history.timer = setTimeout(commitNow, 500)
+}
+function commitNow(): void {
+  if (history.timer) clearTimeout(history.timer)
+  history.timer = null
+  if (history.restoring || !cur || history.index < 0) return
+  const now = stateKey()
+  if (now === history.stack[history.index]) return
+  history.stack.length = history.index + 1 // a new change ends the redo
+  history.stack.push(now)
+  if (history.stack.length > HISTORY_MAX) history.stack.shift()
+  history.index = history.stack.length - 1
+  refreshUndo()
+}
+
+/** Whether two models have the same buses, matrices, channels and send taps: then only the values differ and the audio graph can stay. */
+const structureKey = (s: Snapshot): string => JSON.stringify([s.channels.map((c) => [c.id, c.hasSource, c.sends.map((x) => `${x.bus}${x.pre}`)]), s.buses.map((b) => b.id), s.matrices.map((m) => m.id), s.mains.map((m) => m.id)])
+
+async function goTo(index: number, verb: string): Promise<void> {
+  if (history.restoring) return
+  commitNow() // an edit that has not settled yet is part of the history before it is undone
+  if (index < 0 || index >= history.stack.length) { status(verb === 'Undone' ? 'Nothing to undo.' : 'Nothing to redo.'); return }
+  history.restoring = true
+  try {
+    const before = cur
+    const target = JSON.parse(history.stack[index]) as { cur: Snapshot; order: number[] }
+    const restructure = structureKey(before) !== structureKey(target.cur)
+    history.index = index
+    cur = ensureModel(target.cur)
+    order = target.order
+    if (!channel(selected)) selected = cur.channels[0]?.id ?? 0
+    if (selectedOut && !stripUi.has(selectedOut)) selectedOut = ''
+    if (listen.kind === 'bus' && !cur.buses.some((b) => b.id === listen.id)) listen = { kind: 'main', id: cur.mains[0]?.id ?? 1 }
+    if (listen.kind === 'matrix' && !cur.matrices.some((m) => m.id === listen.id)) listen = { kind: 'main', id: cur.mains[0]?.id ?? 1 }
+    buildStrips()
+    buildTop()
+    buildDetail()
+    routing.render()
+    if (restructure) {
+      const wasPlaying = !!engine?.playing
+      await rebuildEngine()
+      if (wasPlaying) engine?.start()
+    } else engine?.apply(cur)
+    const what = diffSnapshots(before, cur)[0]
+    status(`${verb}${what ? `: ${describeChange(what)}` : ''}.`)
+    refreshTop()
+  } finally {
+    history.restoring = false
+  }
+  refreshUndo()
+}
+const undo = (): Promise<void> => goTo(history.index - 1, 'Undone')
+const redo = (): Promise<void> => goTo(history.index + 1, 'Redone')
+
+let undoBtn: HTMLButtonElement | null = null
+let redoBtn: HTMLButtonElement | null = null
+function refreshUndo(): void {
+  if (undoBtn) undoBtn.disabled = history.index <= 0
+  if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1
+}
+
+/** ⌘Z (Ctrl+Z) undoes, ⌘⇧Z (Ctrl+Shift+Z, and Ctrl+Y) redoes. A text box keeps its own undo. */
+document.addEventListener('keydown', (e) => {
+  const mod = e.metaKey || e.ctrlKey
+  if (!mod || e.altKey) return
+  const key = e.key.toLowerCase()
+  const isUndo = key === 'z' && !e.shiftKey
+  const isRedo = (key === 'z' && e.shiftKey) || (key === 'y' && !e.metaKey)
+  if (!isUndo && !isRedo) return
+  const t = e.target as HTMLElement | null
+  if (t && (t.isContentEditable || (t.tagName === 'INPUT' && ['text', 'number', 'search'].includes((t as HTMLInputElement).type)) || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return
+  if ($<HTMLDialogElement>('dlg').open) return
+  e.preventDefault()
+  void (isUndo ? undo() : redo())
+})
+
 let persistTimer: ReturnType<typeof setTimeout> | null = null
 function persist(): void {
+  commitSoon() // every edit and every change of what is shown comes through here
   if (persistTimer) clearTimeout(persistTimer)
   persistTimer = setTimeout(() => {
     persistTimer = null
@@ -695,6 +794,9 @@ let changesBtn: HTMLButtonElement
 let outMeter: HTMLElement
 
 function buildTop(): void {
+  undoBtn = el<HTMLButtonElement>('button', { class: 'flat', textContent: '↶ UNDO', title: `Undo the last change (${isMacPlatform ? '⌘' : 'Ctrl'}+Z)`, onclick: () => void undo() })
+  redoBtn = el<HTMLButtonElement>('button', { class: 'flat', textContent: 'REDO ↷', title: `Redo (${isMacPlatform ? '⌘⇧Z' : 'Ctrl+Shift+Z'})`, onclick: () => void redo() })
+  refreshUndo()
   playBtn = el<HTMLButtonElement>('button', { class: 'play', onclick: () => void togglePlay() })
   checksBtn = el<HTMLButtonElement>('button', { class: 'flat', onclick: () => showChecks() })
   changesBtn = el<HTMLButtonElement>('button', { class: 'flat', onclick: () => showChanges() })
@@ -716,6 +818,7 @@ function buildTop(): void {
     el<HTMLButtonElement>('button', { class: 'flat', textContent: 'TEST SIGNALS', title: 'Play a test signal on every channel again', onclick: () => void useTestSignals() }),
     el('span', { class: 'sep' }), checksBtn, changesBtn,
     el<HTMLButtonElement>('button', { class: 'flat', textContent: 'SAVE AS SNAPSHOT…', title: baseRaw === null ? 'Open your own snapshot first: the sample is a cut-down copy' : 'Save a new snapshot file with your changes written in', onclick: () => showExport() }),
+    undoBtn, redoBtn,
     el<HTMLButtonElement>('button', { class: 'flat', textContent: 'RESET', title: 'Back to the snapshot as it was loaded', onclick: () => void reset() }))
   refreshTop()
 }
@@ -966,6 +1069,7 @@ void (async () => {
   await useSnapshot(snap, name, path, file)
   try {
     await restoreState(last.state)
+    resetHistory() // the history starts from where the work was brought back to
   } catch (e) {
     // What was remembered does not fit this version: start from the snapshot as it is, and say so.
     console.error('restoring the saved work failed', e)
@@ -981,4 +1085,4 @@ void (async () => {
 })()
 
 // For the end-to-end test.
-window.app = { get engine() { return engine }, get current() { return cur }, get base() { return base }, get snapshotPath() { return snapshotPath }, exportText: () => (baseRaw === null ? null : JSON.stringify(exportSnapshot(baseRaw, base, cur).json)), get sourceName() { return sourceName }, get state() { return { view, layer, selected, order, recording } }, rebuildEngine, ensureEngine, Engine, testSignal }
+window.app = { get engine() { return engine }, get current() { return cur }, get base() { return base }, get snapshotPath() { return snapshotPath }, undo, redo, get history() { return { index: history.index, length: history.stack.length } }, exportText: () => (baseRaw === null ? null : JSON.stringify(exportSnapshot(baseRaw, base, cur).json)), get sourceName() { return sourceName }, get state() { return { view, layer, selected, order, recording } }, rebuildEngine, ensureEngine, Engine, testSignal }

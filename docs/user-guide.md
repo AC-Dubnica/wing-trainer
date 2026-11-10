@@ -120,6 +120,17 @@ A send that is all the way down counts as not connected, so ⌘-click turns it o
 
 The order of the faders is a trainer feature: it is not the console's own layer setting.
 
+## Undo and redo
+
+**⌘Z** (Ctrl+Z on Windows and Linux) **undoes** your last change and **⌘⇧Z** (Ctrl+Shift+Z, or Ctrl+Y) **redoes** it, as many steps as you like. The **↶ UNDO** and **REDO ↷** buttons in the top bar do the same and show when there is something to undo or redo. The bottom line says what was undone, for example `Undone: Ch 14 SINGER 2: Mute off -> on`.
+
+- **A step** is one change: dragging a knob or a fader is one step (it settles half a second after the last move), not hundreds.
+- **What is covered:** everything that changes the snapshot: faders, knobs, mutes, sends, copied channels, added and removed buses and matrices, connections and the output patch, the order of the faders, **RESET**.
+- **Not covered:** which channel is selected, which tab is open, loading a snapshot or a recording. Opening another snapshot starts a new history.
+- **A new change** after an undo ends the redo (the steps you took back are gone), as in any editor.
+- **Text boxes** (a name, a port number) keep their own undo while you are typing in them: ⌘Z there undoes the typing. The shortcut does nothing while a dialog is open.
+- The history lasts while the app is open (200 steps). What you did is still remembered between runs, but not the steps to undo it.
+
 ## Checks and Changes
 
 **CHECKS** lists trouble spots the settings suggest. They are hints, not verdicts:
