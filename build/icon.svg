@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>WING Trainer</title>
+  <defs>
+    <linearGradient id="bg" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#1c2230"/><stop offset="1" stop-color="#07090c"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b7482"/><stop offset="0.45" stop-color="#3b424e"/><stop offset="0.5" stop-color="#f1f3f6"/><stop offset="0.55" stop-color="#3b424e"/><stop offset="1" stop-color="#2a2f38"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="210" fill="url(#bg)"/>
+  <!-- four faders with their colour tags, like the strips of the console -->
+  <g>
+    <rect x="186" y="210" width="40" height="560" rx="20" fill="#05070a" stroke="#2c333d" stroke-width="6"/>
+    <rect x="379" y="210" width="40" height="560" rx="20" fill="#05070a" stroke="#2c333d" stroke-width="6"/>
+    <rect x="572" y="210" width="40" height="560" rx="20" fill="#05070a" stroke="#2c333d" stroke-width="6"/>
+    <rect x="765" y="210" width="40" height="560" rx="20" fill="#05070a" stroke="#2c333d" stroke-width="6"/>
+    <rect x="132" y="330" width="148" height="104" rx="16" fill="url(#cap)" stroke="#0b0d10" stroke-width="5"/>
+    <rect x="325" y="480" width="148" height="104" rx="16" fill="url(#cap)" stroke="#0b0d10" stroke-width="5"/>
+    <rect x="518" y="270" width="148" height="104" rx="16" fill="url(#cap)" stroke="#0b0d10" stroke-width="5"/>
+    <rect x="711" y="410" width="148" height="104" rx="16" fill="url(#cap)" stroke="#0b0d10" stroke-width="5"/>
+    <rect x="146" y="820" width="120" height="64" rx="12" fill="#e8c630"/>
+    <rect x="339" y="820" width="120" height="64" rx="12" fill="#3aa95a"/>
+    <rect x="532" y="820" width="120" height="64" rx="12" fill="#3f8ae0"/>
+    <rect x="725" y="820" width="120" height="64" rx="12" fill="#ee8a27"/>
+  </g>
+</svg>

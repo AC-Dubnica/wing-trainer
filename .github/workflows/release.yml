@@ -1,0 +1,103 @@
+name: Release
+
+# Releasing:  npm version <patch|minor|major>   (bumps package.json and creates the tag vX.Y.Z)
+#             git push --follow-tags            (the pushed tag starts this workflow)
+# The workflow builds the installers on each platform and attaches them to a GitHub release for that tag.
+# "Run workflow" (manual) builds the same installers as downloadable artifacts only and publishes nothing.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false # a platform that fails must not stop the others: whatever was built is published
+      matrix:
+        include:
+          - { runner: macos-latest, label: macOS (Apple silicon), artifact: mac-arm64 }
+          - { runner: macos-15-intel, label: macOS (Intel), artifact: mac-x64 }
+          - { runner: windows-latest, label: Windows (x64), artifact: win-x64 }
+          - { runner: ubuntu-latest, label: Linux (x64), artifact: linux-x64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: The tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version. Use 'npm version' to bump and tag together."
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      # Unsigned for now: macOS shows an "unidentified developer" warning and Windows SmartScreen asks to confirm.
+      - run: npm run package
+
+      - name: Installers
+        shell: bash
+        run: ls -la release/*.dmg release/*.zip release/*.exe release/*.AppImage release/*.deb 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wing-trainer-${{ matrix.artifact }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish the release
+    needs: package
+    # Only a pushed tag publishes; a manual run just leaves the artifacts above. It runs even if some platforms failed,
+    # and publishes the installers that were built.
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - run: ls -la installers
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: installers/*
+          generate_release_notes: true
+          # A tag such as v0.2.0-beta.1 is marked as a pre-release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## Installing
+
+            These builds are not code-signed yet, so the first start needs one extra step:
+
+            - **macOS:** open the `.dmg`, drag WING Trainer to Applications, then right-click the app and choose **Open** once (or run `xattr -cr "/Applications/WING Trainer.app"`). Apple silicon: `*-mac-arm64`; Intel: `*-mac-x64`.
+            - **Windows:** run the `.exe` installer. If SmartScreen appears, choose **More info**, then **Run anyway**. The `.zip` is a portable copy.
+            - **Linux (Ubuntu, Debian and relatives):** install the `.deb` (`sudo apt install ./WING*Trainer-*-linux-x64.deb`). Any other distribution: make the `.AppImage` executable and run it (it needs FUSE 2: on Ubuntu 22.04 and later `sudo apt install libfuse2t64`, or `libfuse2` on older ones).
+
+            Only the macOS (Apple silicon) installer has been run by hand before release; the other platforms are built by this workflow.

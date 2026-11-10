@@ -17,6 +17,19 @@ npm run e2e        # renders the sample setup offline and measures the sound (ne
 
 Node 22 or newer. The app starts with an **anonymised sample setup** (a preacher, two wireless microphones, five singers, piano, cajon, bass and guitar) playing test signals, so it works at once.
 
+## Installers and releases
+
+`npm run package` builds the installer for the computer you are on (into `release/`): a `.dmg` and a `.zip` on macOS, a setup `.exe` and a `.zip` on Windows, an `.AppImage` and a `.deb` on Linux. `npm run package:dir` makes just the unpacked app for a quick check.
+
+To publish a release for all of them:
+
+```bash
+npm version patch          # or minor / major: bumps package.json and creates the tag vX.Y.Z
+git push --follow-tags     # the tag starts .github/workflows/release.yml
+```
+
+The workflow builds the installers on macOS (Apple silicon and Intel), Windows and Linux, and attaches them to a GitHub release for the tag. **Run workflow** on the Actions tab builds them as downloadable files only, without a release. The builds are **not code-signed**, so the first start needs one extra step (the release notes say which). `.github/workflows/ci.yml` runs the types, the unit tests and the build on all three systems for every push, and the sound check under a virtual display on Linux.
+
 ## How to use it
 
 1. **Open snapshot…** loads a `.snap` file saved by the console (JSON). Your own snapshot stays on your computer and is never copied anywhere; `*.snap` files are ignored by git.

@@ -14,6 +14,10 @@ npm run e2e      # builds, renders the sample setup in an OfflineAudioContext in
 
 Dev hooks of the main process: `WING_TRAINER_EVAL="js"` runs JS in the page, prints `EVAL <json>` and quits (the window stays hidden); `WING_TRAINER_SHOT=file.png` (with optional `WING_TRAINER_SHOT_JS`) takes the picture for the README.
 
+## Releases
+
+`package.json` → `build` is the electron-builder configuration (unsigned: `identity: null`); `build/icon.svg` is the icon source and `npx electron scripts/render-icon.cjs` makes `icon.png` and, on macOS, `icon.icns`. `npm run package` builds the installers of the current platform, `npm version <patch|minor|major> && git push --follow-tags` releases through `.github/workflows/release.yml` (macOS arm64 and Intel, Windows, Linux x64). Only the macOS arm64 build was run by hand; the others come from the workflow.
+
 ## Architecture
 
 - `src/shared`: model and pure logic. `snapshot.ts` (tolerant reader of the console's JSON; unknown or missing fields get neutral values), `convert.ts` (console value -> audio parameter), `checks.ts`, `diff.ts`, `multitrack.ts` (recorder track n -> input via `io.out.USB` -> channels patched to that input).
