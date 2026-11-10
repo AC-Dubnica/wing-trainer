@@ -93,12 +93,12 @@ The lines show the signal: blue to a main, amber a bus send, purple to a matrix,
 
 **Make and remove connections in the diagram.** Select an item with a click, then:
 
-- **⌘-click another item** (Ctrl-click on Windows and Linux) to **connect** them. You can name them in either order.
-- **⌥-click another item** (Alt-click) to **disconnect** them, or **⌥-click a line** to remove that connection.
+- **Hold ⌘ and click another item** (Ctrl on Windows and Linux). If the two are **not connected, they get connected**; if they **already are, the connection is removed**. You can name them in either order.
+- **Hold ⌘ and click a line** to remove that connection.
 
-While you hold the key the cursor shows what a click will do, and the line at the bottom says what happened (or why it was refused).
+While you hold the key the cursor becomes a crosshair, and the line at the bottom says what happened (or why it was refused).
 
-| Select | ⌘-click | What happens |
+| Select | ⌘-click | What happens (⌘-click again: it is removed) |
 |---|---|---|
 | an input port | a channel | the channel now takes that input |
 | a channel | a main | the channel is assigned to the main |
@@ -108,7 +108,7 @@ While you hold the key the cursor shows what a click will do, and the line at th
 | a main, bus or matrix | an output port | the output carries it (replacing what it carried) |
 | an input port | an output port | the input is passed straight to the output (the recorder tracks) |
 
-⌥ undoes the same kinds of connection. Things of the same kind (two channels) and mains feeding matrices are refused with a message. Every input port that has a name in the snapshot is in the diagram, used or not, so a channel can be connected to it. To patch an output port that is not shown (nothing is patched to it), use **PATCH** in the Outputs table.
+A send that is all the way down counts as not connected, so ⌘-click turns it on. Things of the same kind (two channels) and mains feeding matrices are refused with a message. Every input port that has a name in the snapshot is in the diagram, used or not, so a channel can be connected to it. To patch an output port that is not shown (nothing is patched to it), use **PATCH** in the Outputs table.
 
 **Remap, without a console.** The two tables on the right change the routing in the app:
 

@@ -84,7 +84,7 @@ When the routing is edited in the Routing tab, this is done again, so a track fo
 
 ## Connections in the diagram
 
-`connect.ts` turns a pair of diagram nodes into a change of the snapshot (`connect`) or its opposite (`disconnect`): a channel takes an input port, a channel or bus is assigned to a main, a channel sends to a bus, a bus sends to a matrix, an output carries a main, bus, matrix or input. The pair can be named in either order (it works out which one feeds the other); things of the same kind, and pairs that cannot be connected directly, are refused with a message. `routing.ts` calls it for ⌘-click (Ctrl on Windows and Linux) and ⌥-click on a node and for ⌥-click on a line (each line has a wide invisible copy to click). Making the view again keeps the scroll of both sides and the box that was in use, so a change in a table does not jump to the top.
+`connect.ts` turns a pair of diagram nodes into a change of the snapshot (`connect`) or its opposite (`disconnect`): a channel takes an input port, a channel or bus is assigned to a main, a channel sends to a bus, a bus sends to a matrix, an output carries a main, bus, matrix or input. The pair can be named in either order (it works out which one feeds the other); things of the same kind, and pairs that cannot be connected directly, are refused with a message. `toggleConnection` is the one gesture: if a line is drawn between the two (`isConnected`, from the flow graph) it disconnects them, otherwise it connects them. `routing.ts` calls it for ⌘-click (Ctrl on Windows and Linux) on another node and on a line (each line has a wide invisible copy to click). Making the view again keeps the scroll of both sides and the box that was in use, so a change in a table does not jump to the top.
 
 ## Copying a channel
 
@@ -120,7 +120,7 @@ The work state (`WorkState` in `app.ts`) is the edited snapshot model, the fader
 |---|---|---|
 | The snapshot reader, conversions, curves, fader travel, checks, change list, recording placement, the flow graph | unit tests (Vitest), against an anonymised sample | `tests/` |
 | The sound: faders, mute, sends, the gate, the compressor, EQ, low cut, solo, the matrix | the real app page renders the sample offline and the level is measured | `scripts/e2e-engine.mjs` (`npm run e2e`) |
-| The Routing tab: tables keep their place, ⌘-click connects, ⌥-click disconnects (on a node and on a line) | the real app, with the clicks made by a script | `scripts/e2e-routing.mjs` (`npm run e2e`) |
+| The Routing tab: tables keep their place, ⌘-click connects or, when already connected, disconnects (on a node and on a line) | the real app, with the clicks made by a script | `scripts/e2e-routing.mjs` (`npm run e2e`) |
 | Saving a snapshot: unedited = identical, one edit = one path, read back = what was edited, copies, buses and matrices | unit tests (and the same checks on a real snapshot, by hand) | `tests/export.test.ts` |
 | What is remembered: the snapshot file, the window, the edits, the selection, the tab | the real app is run twice on a scratch data folder (`WING_TRAINER_USER_DATA`) and the second run must find everything as it was left | `scripts/e2e-session.mjs` (`npm run e2e`) |
 

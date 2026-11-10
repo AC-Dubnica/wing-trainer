@@ -1,4 +1,4 @@
-import { connect, disconnect } from '../shared/connect'
+import { toggleConnection } from '../shared/connect'
 import { buildFlow, trace, type FlowEdge, type FlowNode } from '../shared/flow'
 import { INPUT_GROUPS, INPUT_PORTS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
 
@@ -18,7 +18,7 @@ export interface RoutingDeps {
 
 const isMac = /Mac/i.test(navigator.platform)
 /** The key that means "connect": ⌘ on a Mac, Ctrl elsewhere. */
-const isAdd = (e: MouseEvent | KeyboardEvent): boolean => (isMac ? e.metaKey : e.ctrlKey)
+const isLink = (e: MouseEvent | KeyboardEvent): boolean => (isMac ? e.metaKey : e.ctrlKey)
 
 function el<T extends HTMLElement = HTMLElement>(tag: string, props: Partial<T> & { class?: string } = {}, ...kids: (Node | string)[]): T {
   const { class: cls, ...rest } = props
@@ -53,9 +53,9 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     if (n.kind === 'ch') bar.style.background = deps.colors[n.color] ?? deps.colors[0]
     const c = el('div', { class: `fnode ${n.kind} ${n.muted ? 'muted' : ''}`, title: n.sub }, ...(n.kind === 'ch' ? [bar] : []), el('div', { class: 'fl', textContent: n.label }), el('div', { class: 'fs', textContent: n.sub }))
     c.onclick = (e) => {
-      // With an item selected, ⌘-click (Ctrl on Windows and Linux) on another connects them, and ⌥-click (Alt) disconnects them.
-      if (selected && selected !== n.id && (isAdd(e) || e.altKey)) {
-        const r = e.altKey ? disconnect(deps.snap(), selected, n.id) : connect(deps.snap(), selected, n.id)
+      // With an item selected, ⌘-click (Ctrl on Windows and Linux) on another connects them, or disconnects them if they are connected.
+      if (selected && selected !== n.id && isLink(e)) {
+        const r = toggleConnection(deps.snap(), selected, n.id)
         deps.say(r.message)
         if (r.ok) changed()
         return
@@ -134,7 +134,7 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
         t.textContent = `${e.from.split(':').slice(1).join(' ')} → ${e.to.split(':').slice(1).join(' ')} ${e.label}`.trim()
         path.append(t)
         svg.append(path)
-        // A wide invisible line over it, so a connection can be clicked: ⌥-click removes it.
+        // A wide invisible line over it, so a connection can be clicked: ⌘-click removes it.
         const hit = document.createElementNS(SVGNS, 'path')
         hit.setAttribute('d', path.getAttribute('d')!)
         hit.setAttribute('class', 'flowhit')
@@ -143,11 +143,11 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
         hit.setAttribute('stroke-width', '12')
         const where = `${nodes.find((n) => n.id === e.from)?.label ?? e.from} → ${nodes.find((n) => n.id === e.to)?.label ?? e.to}`
         const title = document.createElementNS(SVGNS, 'title')
-        title.textContent = `${where} ${e.label}`.trim() + ' (⌥-click to disconnect)'
+        title.textContent = `${where} ${e.label}`.trim() + ` (${isMac ? '⌘' : 'Ctrl'}-click to disconnect)`
         hit.append(title)
         hit.addEventListener('click', (ev) => {
-          if (!ev.altKey) return
-          const r = disconnect(deps.snap(), e.from, e.to)
+          if (!isLink(ev)) return
+          const r = toggleConnection(deps.snap(), e.from, e.to) // they are connected (the line is drawn), so this disconnects
           deps.say(r.message)
           if (r.ok) changed()
         })
@@ -242,7 +242,7 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     const legend = el('div', { class: 'legend' },
       ...(['input', 'main', 'send', 'matrix', 'patch'] as const).map((k) => el('span', {}, el('i', { style: `background:${EDGE_COLOR[k]}` } as unknown as Partial<HTMLElement>), { input: 'input', main: 'to a main', send: 'bus send', matrix: 'to matrix', patch: 'to an output' }[k])),
       el('label', { class: 'sendsw' }, sends, ' show all bus sends'),
-      el('span', { class: 'dim hint' }, `Click: select · ${isMac ? '⌘' : 'Ctrl'}-click another item: connect · ${isMac ? '⌥' : 'Alt'}-click another item or a line: disconnect`))
+      el('span', { class: 'dim hint' }, `Click: select · hold ${isMac ? '⌘' : 'Ctrl'} and click another item: connect it, or disconnect it if it is already connected (also on a line)`))
     const d = diagram()
     const right = el('div', { class: 'rright' }, fadersTable(), outputsTable())
     root.replaceChildren(el('div', { class: 'rleft' }, legend, pathInfo, d), right)
@@ -255,11 +255,11 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     requestAnimationFrame(() => { restore(); highlight(); paintEdges() })
   }
 
-  // While the connect or disconnect key is held the cursor says what a click will do.
-  const keys = (e: KeyboardEvent): void => { root.classList.toggle('adding', isAdd(e)); root.classList.toggle('removing', e.altKey) }
+  // While the key is held the cursor says that a click makes or removes a connection.
+  const keys = (e: KeyboardEvent): void => { root.classList.toggle('linking', isLink(e)) }
   document.addEventListener('keydown', keys)
   document.addEventListener('keyup', keys)
-  window.addEventListener('blur', () => { root.classList.remove('adding', 'removing') })
+  window.addEventListener('blur', () => { root.classList.remove('linking') })
 
   return { render, repaint: () => paintEdges(), clear: () => { selected = '' } }
 }

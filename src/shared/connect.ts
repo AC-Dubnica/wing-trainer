@@ -1,3 +1,4 @@
+import { buildFlow } from './flow'
 import { OFF_DB, type Snapshot } from './model'
 
 /** What a node of the signal-flow diagram is, from its id (`in:C:2`, `ch:13`, `bus:4`, `main:1`, `matrix:1`, `out:USB:3`). */
@@ -153,4 +154,17 @@ export function disconnect(s: Snapshot, aId: string, bId: string): ConnectResult
     return { ok: true, message: `${t} no longer carries ${f}: it is not patched now.` }
   }
   return not
+}
+
+/** Whether two things of the flow are connected now (in either order): a line is drawn between them. */
+export function isConnected(s: Snapshot, aId: string, bId: string): boolean {
+  return buildFlow(s).edges.some((e) => (e.from === aId && e.to === bId) || (e.from === bId && e.to === aId))
+}
+
+export interface ToggleResult extends ConnectResult { /** True when a connection was made, false when one was taken away. */ added: boolean }
+
+/** One gesture for both: if the two are connected the connection is removed, if not it is made. */
+export function toggleConnection(s: Snapshot, aId: string, bId: string): ToggleResult {
+  if (isConnected(s, aId, bId)) return { ...disconnect(s, aId, bId), added: false }
+  return { ...connect(s, aId, bId), added: true }
 }

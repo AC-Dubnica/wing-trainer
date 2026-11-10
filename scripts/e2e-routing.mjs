@@ -1,5 +1,5 @@
 // End-to-end check of the Routing tab: the tables keep their place when something is changed, and connections are made and removed in
-// the diagram with the keys (⌘-click connects, ⌥-click disconnects, also on a line). Needs a display.
+// the diagram with one key: ⌘-click connects, or disconnects when they are already connected (also on a line). Needs a display.
 import { spawnSync } from 'node:child_process'
 import { ensureElectron } from './electron-path.mjs'
 
@@ -36,17 +36,21 @@ const scenario = `(async () => {
   click(node('main:1'), { metaKey: true, ctrlKey: true }); await w(300)
   r.cajonToMain = cur().channels.find((c) => c.id === 20).mains.find((m) => m.main === 1).on
 
-  // 3. ⌥-click disconnects: the send of ch 14 to STREAM
+  // 3. ⌘-click on two things that are already connected disconnects them: the send of ch 14 to STREAM
   click(node('ch:14')); await w(200)
-  click(node('bus:' + stream), { altKey: true }); await w(300)
+  click(node('bus:' + stream), { metaKey: true, ctrlKey: true }); await w(300)
   r.sendRemoved = !cur().channels.find((c) => c.id === 14).sends.find((s) => s.bus === stream).on
 
-  // ⌥-click on a line: ch 15 -> PA
+  // ⌘-click on a line: ch 15 -> PA
   const hits = qa('.flowhit')
   const line = hits.find((h) => (h.querySelector('title')?.textContent ?? '').startsWith('SINGER 3 → PA'))
   r.lineFound = !!line
-  if (line) { line.dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: true })); await w(300) }
+  if (line) { line.dispatchEvent(new MouseEvent('click', { bubbles: true, metaKey: true, ctrlKey: true })); await w(300) }
   r.lineRemoved = !cur().channels.find((c) => c.name === 'SINGER 3').mains.find((m) => m.main === 1).on
+  // ... and ⌘-click again on the two connects them once more (the same gesture, the other way)
+  click(node('ch:15')); await w(200)
+  click(node('main:1'), { metaKey: true, ctrlKey: true }); await w(300)
+  r.reconnected = cur().channels.find((c) => c.name === 'SINGER 3').mains.find((m) => m.main === 1).on
 
   // 4. An output patched by connecting a main to it; nonsense is refused with a message
   click(node('main:2')); await w(200)
@@ -75,8 +79,9 @@ const checks = [
   ['⌘-click on another item connects: the channel now takes that input', j(r.connectedInput) === j({ grp: 'C', in: 12 }), j(r.connectedInput)],
   ['and it says what it did', /now takes C 12/.test(r.say), r.say],
   ['a channel is connected to a main', r.cajonToMain === true, String(r.cajonToMain)],
-  ['⌥-click on another item disconnects: the send is off', r.sendRemoved === true, String(r.sendRemoved)],
-  ['⌥-click on a line removes that connection', r.lineFound && r.lineRemoved, j([r.lineFound, r.lineRemoved])],
+  ['⌘-click on two connected items disconnects them: the send is off', r.sendRemoved === true, String(r.sendRemoved)],
+  ['⌘-click on a line removes that connection', r.lineFound && r.lineRemoved, j([r.lineFound, r.lineRemoved])],
+  ['⌘-click on them again connects them once more', r.reconnected === true, String(r.reconnected)],
   ['an output is patched by connecting a main to it', j(r.outputPatched) === j({ grp: 'MAIN', in: 2 }), j(r.outputPatched)],
   ['two things that cannot be connected are refused, with the reason', /same kind/.test(r.refused), r.refused],
   ['the connections show in the list of changes', /CHANGES\d+/.test(r.changes), r.changes],

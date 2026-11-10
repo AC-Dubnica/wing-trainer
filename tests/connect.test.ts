@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import sample from '../fixtures/sample.snap.json'
-import { connect, disconnect, parseRef } from '../src/shared/connect'
+import { connect, disconnect, isConnected, parseRef, toggleConnection } from '../src/shared/connect'
 import { buildFlow } from '../src/shared/flow'
 import { parseSnapshot } from '../src/shared/snapshot'
 
@@ -93,5 +93,36 @@ describe('disconnect', () => {
     disconnect(s, 'in:C:12', 'ch:13')
     expect(s.channels.find((c) => c.id === 13)!.hasSource).toBe(false) // the old input is gone: re-connect it to undo
     expect(before.channels.find((c) => c.id === 13)!.hasSource).toBe(true)
+  })
+})
+
+describe('toggleConnection', () => {
+  it('connects what is not connected and disconnects what is', () => {
+    const s = fresh()
+    expect(isConnected(s, 'ch:20', 'main:1')).toBe(false)
+    const first = toggleConnection(s, 'ch:20', 'main:1')
+    expect(first).toMatchObject({ ok: true, added: true })
+    expect(isConnected(s, 'ch:20', 'main:1')).toBe(true)
+    const second = toggleConnection(s, 'main:1', 'ch:20') // either order
+    expect(second).toMatchObject({ ok: true, added: false })
+    expect(isConnected(s, 'ch:20', 'main:1')).toBe(false)
+  })
+
+  it('works for an input, a send and an output', () => {
+    const s = fresh()
+    expect(toggleConnection(s, 'in:C:2', 'ch:13')).toMatchObject({ added: false }) // C 2 feeds ch 13: it is taken away
+    expect(s.channels.find((c) => c.id === 13)!.hasSource).toBe(false)
+    expect(toggleConnection(s, 'in:C:2', 'ch:13')).toMatchObject({ added: true })
+    expect(s.channels.find((c) => c.id === 13)!.source).toEqual({ grp: 'C', in: 2 })
+    expect(toggleConnection(s, 'main:1', 'out:C:7')).toMatchObject({ added: false })
+    expect(s.outputs.some((o) => o.grp === 'C' && o.port === 7)).toBe(false)
+    expect(toggleConnection(s, 'main:1', 'out:C:7')).toMatchObject({ added: true })
+  })
+
+  it('a send that is all the way down counts as not connected, so the gesture connects it', () => {
+    const s = fresh()
+    const full = s.buses.find((b) => b.name === 'FULL MIX')!.id
+    expect(isConnected(s, 'ch:13', `bus:${full}`)).toBe(false)
+    expect(toggleConnection(s, 'ch:13', `bus:${full}`)).toMatchObject({ ok: true, added: true })
   })
 })
