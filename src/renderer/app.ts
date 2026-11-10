@@ -379,11 +379,20 @@ let selectedOut = ''
 function buildStrips(): void {
   stripUi.clear()
   const { bank, out } = faders()
-  const addTile = (label: string, title: string, enabled: boolean, onclick: () => void): HTMLButtonElement => el<HTMLButtonElement>('button', { class: 'addtile', textContent: label, title, disabled: !enabled, onclick })
-  // The + BUS tile stands at the right end of the buses, outside the part that scrolls, so it is always in sight.
-  $('bank').replaceChildren(...bank.map(makeStrip))
-  $('bankadd').replaceChildren(...(layer === 'buses' ? [addTile('+ BUS', freeBusId(cur) === null ? `All ${MAX_BUSES} buses are in use` : 'Add a bus', freeBusId(cur) !== null, () => showAddMix('bus'))] : []))
-  $('outs').replaceChildren(el('div', { class: 'cap', textContent: 'MAIN' }), el('div', { class: 'row2' }, ...out.map(makeStrip), addTile('+ MATRIX', freeMatrixId(cur) === null ? `All ${MAX_MATRICES} matrices are in use` : 'Add a matrix', freeMatrixId(cur) !== null, () => showAddMix('matrix'))))
+  // The empty strip at the end: where the next bus or matrix will stand, with "add" on it.
+  const addTile = (kind: 'bus' | 'matrix', title: string, enabled: boolean, onclick: () => void): HTMLElement => {
+    const id = kind === 'bus' ? freeBusId(cur) : freeMatrixId(cur)
+    const root = el('div', { class: `strip ${kind} empty ${enabled ? '' : 'disabled'}`, title, role: 'button', tabIndex: enabled ? 0 : -1 },
+      el('div', { class: 'top' }, el('b', { textContent: id === null ? '' : kind === 'bus' ? `B${id}` : `MX${id}` })), el('div', { class: 'fill' }),
+      el('div', { class: 'plus', textContent: '+' }), el('div', { class: 'what', textContent: kind === 'bus' ? 'ADD BUS' : 'ADD MATRIX' }), el('div', { class: 'fill' }))
+    if (enabled) {
+      root.onclick = onclick
+      root.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick() } }
+    }
+    return root
+  }
+  $('bank').replaceChildren(...bank.map(makeStrip), ...(layer === 'buses' ? [addTile('bus', freeBusId(cur) === null ? `All ${MAX_BUSES} buses are in use` : 'Add a bus', freeBusId(cur) !== null, () => showAddMix('bus'))] : []))
+  $('outs').replaceChildren(el('div', { class: 'cap', textContent: 'MAIN' }), el('div', { class: 'row2' }, ...out.map(makeStrip), addTile('matrix', freeMatrixId(cur) === null ? `All ${MAX_MATRICES} matrices are in use` : 'Add a matrix', freeMatrixId(cur) !== null, () => showAddMix('matrix'))))
   refreshAllStrips()
 }
 
