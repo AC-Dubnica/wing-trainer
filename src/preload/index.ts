@@ -14,6 +14,8 @@ const api = {
   /** Asks for a folder, or with `again` opens that folder without asking. */
   openRecordingFolder: (again?: string): Promise<{ dir: string; files: AudioFile[] } | null> => ipcRenderer.invoke('audio:folder', again),
   openAudioFile: (): Promise<AudioFile | null> => ipcRenderer.invoke('audio:file'),
+  /** Tests only (the handler exists when a test script runs the app): a real click with modifier keys. */
+  testClick: (x: number, y: number, modifiers: string[]): Promise<void> => ipcRenderer.invoke('test:click', x, y, modifiers),
   readAudio: (path: string): Promise<ArrayBuffer> => ipcRenderer.invoke('audio:read', path),
 }
 

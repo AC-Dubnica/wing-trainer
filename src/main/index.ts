@@ -197,6 +197,18 @@ ipcMain.handle('session:sample', () => {
   saveSoon()
 })
 
+// For the tests: a real mouse click (made by the browser engine, with the modifier keys held), not a script's imitation of one.
+if (process.env.WING_TRAINER_EVAL) {
+  ipcMain.handle('test:click', (_e, x: number, y: number, modifiers: string[]) => {
+    const wc = win?.webContents
+    if (!wc) return
+    const mods = modifiers as ('shift' | 'control' | 'alt' | 'meta')[]
+    wc.sendInputEvent({ type: 'mouseMove', x, y, modifiers: mods })
+    wc.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1, modifiers: mods })
+    wc.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1, modifiers: mods })
+  })
+}
+
 void app.whenReady().then(() => {
   loadSession()
   createWindow()

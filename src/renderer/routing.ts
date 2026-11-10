@@ -18,7 +18,7 @@ export interface RoutingDeps {
 
 const isMac = /Mac/i.test(navigator.platform)
 /** The key that means "connect": ⌘ on a Mac, Ctrl elsewhere. */
-const isLink = (e: MouseEvent | KeyboardEvent): boolean => (isMac ? e.metaKey : e.ctrlKey)
+const isLink = (e: MouseEvent | KeyboardEvent): boolean => (isMac ? e.metaKey : e.ctrlKey) || e.altKey // ⌥ (Alt) does the same, for anyone who tries it
 
 function el<T extends HTMLElement = HTMLElement>(tag: string, props: Partial<T> & { class?: string } = {}, ...kids: (Node | string)[]): T {
   const { class: cls, ...rest } = props
@@ -54,7 +54,10 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     const c = el('div', { class: `fnode ${n.kind} ${n.muted ? 'muted' : ''}`, title: n.sub }, ...(n.kind === 'ch' ? [bar] : []), el('div', { class: 'fl', textContent: n.label }), el('div', { class: 'fs', textContent: n.sub }))
     c.onclick = (e) => {
       // With an item selected, ⌘-click (Ctrl on Windows and Linux) on another connects them, or disconnects them if they are connected.
-      if (selected && selected !== n.id && isLink(e)) {
+      if (isLink(e)) {
+        // The key is held: this click is meant to make or remove a connection, so it never fails silently.
+        if (!selected) { deps.say(`First select an item with a plain click, then hold ${isMac ? '⌘' : 'Ctrl'} and click the one to connect it to (or disconnect it from).`); return }
+        if (selected === n.id) { deps.say('That is the selected item: hold the key and click a different one.'); return }
         const r = toggleConnection(deps.snap(), selected, n.id)
         deps.say(r.message)
         if (r.ok) changed()
@@ -256,7 +259,11 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
   }
 
   // While the key is held the cursor says that a click makes or removes a connection.
-  const keys = (e: KeyboardEvent): void => { root.classList.toggle('linking', isLink(e)) }
+  const keys = (e: KeyboardEvent): void => {
+    const on = isLink(e)
+    if (on && !root.classList.contains('linking') && selected && !root.hidden) deps.say(`${nodes.find((n) => n.id === selected)?.label ?? ''} is selected: click another item to connect it, or to disconnect it if it is already connected.`)
+    root.classList.toggle('linking', on)
+  }
   document.addEventListener('keydown', keys)
   document.addEventListener('keyup', keys)
   window.addEventListener('blur', () => { root.classList.remove('linking') })

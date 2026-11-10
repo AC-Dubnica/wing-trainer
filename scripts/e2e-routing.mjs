@@ -60,6 +60,23 @@ const scenario = `(async () => {
   click(node('ch:14'), { metaKey: true, ctrlKey: true }); await w(300)
   r.refused = document.getElementById('msg').textContent
 
+  // 4b. Real clicks (made by the browser engine, with the key really held), not a script's imitation
+  const centre = (el) => { const b = el.getBoundingClientRect(); return [Math.round(b.left + b.width / 2), Math.round(b.top + b.height / 2)] }
+  const real = async (id, mods = []) => { node(id).scrollIntoView({ block: 'center' }); await w(150); const [x, y] = centre(node(id)); await window.trainer.testClick(x, y, mods); await w(450) }
+  const onMain = () => cur().channels.find((c) => c.id === 22).mains.find((m) => m.main === 1).on
+  const start = onMain()
+  await real('ch:22'); await real('main:1', ['meta'])
+  r.real = { start, afterCmd: onMain() }
+  await real('main:1', ['meta'])
+  r.real.afterCmdAgain = onMain()
+  await real('main:1', ['alt'])
+  r.real.afterAlt = onMain()
+  r.real.say = document.getElementById('msg').textContent
+  // with nothing selected the key click says what to do
+  await real('ch:22'); // deselect (it was selected)
+  await real('ch:21', ['meta'])
+  r.real.noSelection = document.getElementById('msg').textContent
+
   // 5. They show in the list of changes
   r.changes = qa('.flat').find((b) => b.textContent.startsWith('CHANGES')).textContent
   return r
@@ -84,6 +101,9 @@ const checks = [
   ['⌘-click on them again connects them once more', r.reconnected === true, String(r.reconnected)],
   ['an output is patched by connecting a main to it', j(r.outputPatched) === j({ grp: 'MAIN', in: 2 }), j(r.outputPatched)],
   ['two things that cannot be connected are refused, with the reason', /same kind/.test(r.refused), r.refused],
+  ['a real ⌘-click connects, and another disconnects (not only an imitated one)', r.real.start === true && r.real.afterCmd === false && r.real.afterCmdAgain === true, j(r.real)],
+  ['⌥ does the same', r.real.afterAlt === false, j(r.real)],
+  ['⌘-click with nothing selected says what to do instead of doing nothing', /First select an item/.test(r.real.noSelection), r.real.noSelection],
   ['the connections show in the list of changes', /CHANGES\d+/.test(r.changes), r.changes],
 ]
 let failed = 0
