@@ -1,3 +1,4 @@
+import { connect, disconnect } from '../shared/connect'
 import { buildFlow, trace, type FlowEdge, type FlowNode } from '../shared/flow'
 import { INPUT_GROUPS, INPUT_PORTS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
 
@@ -9,9 +10,15 @@ export interface RoutingDeps {
   /** The routing was edited (an input or an output): the sound of a recording may need to follow. */
   edited(): void
   selectChannel(id: number): void
+  /** Says something to the user (the line at the bottom of the window). */
+  say(text: string): void
   colors: string[]
   lightColors: Set<number>
 }
+
+const isMac = /Mac/i.test(navigator.platform)
+/** The key that means "connect": ⌘ on a Mac, Ctrl elsewhere. */
+const isAdd = (e: MouseEvent | KeyboardEvent): boolean => (isMac ? e.metaKey : e.ctrlKey)
 
 function el<T extends HTMLElement = HTMLElement>(tag: string, props: Partial<T> & { class?: string } = {}, ...kids: (Node | string)[]): T {
   const { class: cls, ...rest } = props
@@ -45,11 +52,19 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     const bar = el('div', { class: 'fbar' })
     if (n.kind === 'ch') bar.style.background = deps.colors[n.color] ?? deps.colors[0]
     const c = el('div', { class: `fnode ${n.kind} ${n.muted ? 'muted' : ''}`, title: n.sub }, ...(n.kind === 'ch' ? [bar] : []), el('div', { class: 'fl', textContent: n.label }), el('div', { class: 'fs', textContent: n.sub }))
-    c.onclick = () => {
+    c.onclick = (e) => {
+      // With an item selected, ⌘-click (Ctrl on Windows and Linux) on another connects them, and ⌥-click (Alt) disconnects them.
+      if (selected && selected !== n.id && (isAdd(e) || e.altKey)) {
+        const r = e.altKey ? disconnect(deps.snap(), selected, n.id) : connect(deps.snap(), selected, n.id)
+        deps.say(r.message)
+        if (r.ok) changed()
+        return
+      }
       selected = selected === n.id ? '' : n.id
       if (n.kind === 'ch' && selected) deps.selectChannel(Number(n.id.split(':')[1]))
       highlight()
     }
+    c.dataset.id = n.id
     nodeEls.set(n.id, c)
     return c
   }
@@ -119,6 +134,24 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
         t.textContent = `${e.from.split(':').slice(1).join(' ')} → ${e.to.split(':').slice(1).join(' ')} ${e.label}`.trim()
         path.append(t)
         svg.append(path)
+        // A wide invisible line over it, so a connection can be clicked: ⌥-click removes it.
+        const hit = document.createElementNS(SVGNS, 'path')
+        hit.setAttribute('d', path.getAttribute('d')!)
+        hit.setAttribute('class', 'flowhit')
+        hit.setAttribute('fill', 'none')
+        hit.setAttribute('stroke', 'transparent')
+        hit.setAttribute('stroke-width', '12')
+        const where = `${nodes.find((n) => n.id === e.from)?.label ?? e.from} → ${nodes.find((n) => n.id === e.to)?.label ?? e.to}`
+        const title = document.createElementNS(SVGNS, 'title')
+        title.textContent = `${where} ${e.label}`.trim() + ' (⌥-click to disconnect)'
+        hit.append(title)
+        hit.addEventListener('click', (ev) => {
+          if (!ev.altKey) return
+          const r = disconnect(deps.snap(), e.from, e.to)
+          deps.say(r.message)
+          if (r.ok) changed()
+        })
+        svg.append(hit)
       }
     }
     return el('div', { class: 'flowscroll' }, wrap)
@@ -198,17 +231,35 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
   }
 
   function render(): void {
-    const keepScroll = root.querySelector('.flowscroll')?.scrollTop ?? 0
+    // Making the view again must not lose the place: the scroll of both sides and the box that was being used.
+    const keep = {
+      flow: [root.querySelector('.flowscroll')?.scrollTop ?? 0, root.querySelector('.flowscroll')?.scrollLeft ?? 0],
+      right: [root.querySelector('.rright')?.scrollTop ?? 0, root.querySelector('.rright')?.scrollLeft ?? 0],
+      focus: root.contains(document.activeElement) ? (document.activeElement as HTMLElement).getAttribute('aria-label') : null,
+    }
     const sends = el<HTMLInputElement>('input', { type: 'checkbox', checked: showSends })
     sends.onchange = () => { showSends = sends.checked; paintEdges() }
     const legend = el('div', { class: 'legend' },
       ...(['input', 'main', 'send', 'matrix', 'patch'] as const).map((k) => el('span', {}, el('i', { style: `background:${EDGE_COLOR[k]}` } as unknown as Partial<HTMLElement>), { input: 'input', main: 'to a main', send: 'bus send', matrix: 'to matrix', patch: 'to an output' }[k])),
-      el('label', { class: 'sendsw' }, sends, ' show all bus sends'))
+      el('label', { class: 'sendsw' }, sends, ' show all bus sends'),
+      el('span', { class: 'dim hint' }, `Click: select · ${isMac ? '⌘' : 'Ctrl'}-click another item: connect · ${isMac ? '⌥' : 'Alt'}-click another item or a line: disconnect`))
     const d = diagram()
-    root.replaceChildren(el('div', { class: 'rleft' }, legend, pathInfo, d), el('div', { class: 'rright' }, fadersTable(), outputsTable()))
-    d.scrollTop = keepScroll
-    requestAnimationFrame(() => { highlight(); paintEdges() })
+    const right = el('div', { class: 'rright' }, fadersTable(), outputsTable())
+    root.replaceChildren(el('div', { class: 'rleft' }, legend, pathInfo, d), right)
+    const restore = (): void => {
+      d.scrollTop = keep.flow[0]; d.scrollLeft = keep.flow[1]
+      right.scrollTop = keep.right[0]; right.scrollLeft = keep.right[1]
+    }
+    restore()
+    if (keep.focus) (root.querySelector(`[aria-label="${keep.focus.replace(/"/g, '\\"')}"]`) as HTMLElement | null)?.focus({ preventScroll: true })
+    requestAnimationFrame(() => { restore(); highlight(); paintEdges() })
   }
+
+  // While the connect or disconnect key is held the cursor says what a click will do.
+  const keys = (e: KeyboardEvent): void => { root.classList.toggle('adding', isAdd(e)); root.classList.toggle('removing', e.altKey) }
+  document.addEventListener('keydown', keys)
+  document.addEventListener('keyup', keys)
+  window.addEventListener('blur', () => { root.classList.remove('adding', 'removing') })
 
   return { render, repaint: () => paintEdges(), clear: () => { selected = '' } }
 }

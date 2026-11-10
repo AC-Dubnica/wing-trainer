@@ -91,8 +91,28 @@ The lines show the signal: blue to a main, amber a bus send, purple to a matrix,
 
 **Follow a signal.** Click any item: its whole path lights up, both ways (where the signal comes from, and every output it reaches). The item you clicked has a **white** outline, every other input, channel (fader), mix and output on its path an **amber** outline, and everything else fades. A line above the diagram lists the path in words, by column (inputs, channels, mixes, outputs). Click the item again to clear. Bus sends are drawn only for the clicked path, or all of them with **show all bus sends**.
 
+**Make and remove connections in the diagram.** Select an item with a click, then:
+
+- **⌘-click another item** (Ctrl-click on Windows and Linux) to **connect** them. You can name them in either order.
+- **⌥-click another item** (Alt-click) to **disconnect** them, or **⌥-click a line** to remove that connection.
+
+While you hold the key the cursor shows what a click will do, and the line at the bottom says what happened (or why it was refused).
+
+| Select | ⌘-click | What happens |
+|---|---|---|
+| an input port | a channel | the channel now takes that input |
+| a channel | a main | the channel is assigned to the main |
+| a channel | a bus | the channel sends to the bus (at 0 dB, turn it down with its knob in the channel's Sends) |
+| a bus | a main | the bus is assigned to the main |
+| a bus | a matrix | the bus sends to the matrix |
+| a main, bus or matrix | an output port | the output carries it (replacing what it carried) |
+| an input port | an output port | the input is passed straight to the output (the recorder tracks) |
+
+⌥ undoes the same kinds of connection. Things of the same kind (two channels) and mains feeding matrices are refused with a message. Every input port that has a name in the snapshot is in the diagram, used or not, so a channel can be connected to it. To patch an output port that is not shown (nothing is patched to it), use **PATCH** in the Outputs table.
+
 **Remap, without a console.** The two tables on the right change the routing in the app:
 
+- **Both tables keep their place** when you change something: they do not jump back to the top.
 - **Faders and inputs:** the ▲ ▼ buttons move a channel to the left or right in the order of the faders. The **Input** boxes change which port the channel listens to (a group such as `C`, `AUX`, `USB`, and a port number). With a recording open, the tracks follow at once: a channel that now listens to another input plays the track recorded on that input.
 - **Outputs:** each patched output port shows its source (a main, matrix, bus, the console monitor, or an input passed straight through). Change it, unpatch it with ×, or patch another port at the bottom with **PATCH**. The USB outputs are the recorder tracks, so changing them changes which recorded track plays on which fader.
 

@@ -266,7 +266,9 @@ const routing = createRouting($('routing'), {
     buildStrips()
     refreshTop()
   },
+  say: (text) => status(text),
   edited: () => {
+    engine?.apply(cur) // a send or an assignment may have changed
     assignRecording()
     if (engine?.playing) engine.start()
     buildStrips()

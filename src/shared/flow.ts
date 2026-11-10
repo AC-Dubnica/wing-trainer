@@ -45,6 +45,8 @@ export function buildFlow(s: Snapshot): { nodes: FlowNode[]; edges: FlowEdge[] }
     return id
   }
 
+  // Every input port that has a name in the snapshot is there, used or not, so a channel can be connected to it.
+  for (const p of s.inputs) inputNode(p.grp, p.port)
   for (const m of s.mains) add({ id: `main:${m.id}`, kind: 'main', label: m.name, sub: `MAIN ${m.id} · ${dbLabel(m.fader)}`, color: 0, muted: m.mute })
   for (const m of s.matrices) add({ id: `matrix:${m.id}`, kind: 'matrix', label: m.name, sub: `MATRIX ${m.id} · ${dbLabel(m.fader)}`, color: 0, muted: m.mute })
   for (const b of s.buses) add({ id: `bus:${b.id}`, kind: 'bus', label: b.name, sub: `BUS ${b.id} · ${dbLabel(b.fader)}`, color: 0, muted: b.mute })

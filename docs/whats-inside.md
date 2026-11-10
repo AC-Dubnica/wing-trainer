@@ -21,6 +21,7 @@ src/
     multitrack.ts        which recorded track plays on which channel
     flow.ts              the signal-flow graph and the path through it
     session.ts           what is remembered between runs (window, folders, where the work ended)
+    connect.ts           makes and removes a connection between two nodes of the diagram
     duplicate.ts         copies a channel to a free channel number and a new input
     mixes.ts             adds, renames and removes buses and matrices
     export.ts            writes the edits back into the snapshot file
@@ -81,6 +82,10 @@ The console's USB recorder writes one track per recorder output. The snapshot sa
 
 When the routing is edited in the Routing tab, this is done again, so a track follows its input from fader to fader.
 
+## Connections in the diagram
+
+`connect.ts` turns a pair of diagram nodes into a change of the snapshot (`connect`) or its opposite (`disconnect`): a channel takes an input port, a channel or bus is assigned to a main, a channel sends to a bus, a bus sends to a matrix, an output carries a main, bus, matrix or input. The pair can be named in either order (it works out which one feeds the other); things of the same kind, and pairs that cannot be connected directly, are refused with a message. `routing.ts` calls it for ⌘-click (Ctrl on Windows and Linux) and ⌥-click on a node and for ⌥-click on a line (each line has a wide invisible copy to click). Making the view again keeps the scroll of both sides and the box that was in use, so a change in a table does not jump to the top.
+
 ## Copying a channel
 
 `duplicate.ts` clones a channel (a deep copy, so the two are independent), gives it the lowest free channel number (the console has 40), the new input and a name, and marks it `copyOf` the original. The screen puts it next to the original on the faders, rebuilds the audio graph and the Routing tab, and the change list reports it as added. Because a recording is placed by input (see above), a track recorded on that input plays on the copy as well.
@@ -115,6 +120,7 @@ The work state (`WorkState` in `app.ts`) is the edited snapshot model, the fader
 |---|---|---|
 | The snapshot reader, conversions, curves, fader travel, checks, change list, recording placement, the flow graph | unit tests (Vitest), against an anonymised sample | `tests/` |
 | The sound: faders, mute, sends, the gate, the compressor, EQ, low cut, solo, the matrix | the real app page renders the sample offline and the level is measured | `scripts/e2e-engine.mjs` (`npm run e2e`) |
+| The Routing tab: tables keep their place, ⌘-click connects, ⌥-click disconnects (on a node and on a line) | the real app, with the clicks made by a script | `scripts/e2e-routing.mjs` (`npm run e2e`) |
 | Saving a snapshot: unedited = identical, one edit = one path, read back = what was edited, copies, buses and matrices | unit tests (and the same checks on a real snapshot, by hand) | `tests/export.test.ts` |
 | What is remembered: the snapshot file, the window, the edits, the selection, the tab | the real app is run twice on a scratch data folder (`WING_TRAINER_USER_DATA`) and the second run must find everything as it was left | `scripts/e2e-session.mjs` (`npm run e2e`) |
 
