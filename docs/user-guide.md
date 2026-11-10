@@ -107,6 +107,18 @@ Fader order: PREACHER, SINGER 1, WIRELESS 1, ...
 
 **COPY** puts the list on the clipboard. The trainer does **not** write snapshots: to use a result, make the same changes on the console. **RESET** goes back to the snapshot.
 
+## What the app remembers
+
+The app opens where you left it:
+
+- **The window:** it opens **maximized** the first time. After that it comes back in the size and place you left it, and maximized again if you closed it maximized. A window left on a screen that has been unplugged is moved back onto a screen.
+- **The snapshot:** the file you had open is opened again by itself (read from the file, so a changed file shows its new content). If the file is gone, the sample opens.
+- **Your work:** your edits (faders, knobs, copied channels, remapped inputs and outputs), the order of the faders, the selected channel, the open tab (Console or Routing), CHANNELS or BUSES, and what you listen to. The bottom line says "Back where you left off" and how many changes you have. **RESET** still goes back to the snapshot as it was loaded.
+- **The recording:** the folder you opened is opened again and its tracks are read again (this can take a moment for a large recording). If the folder has gone, the channels play test signals. A file played on a single channel is not remembered.
+- **The folders of the dialogs:** the snapshot, recording and audio file dialogs open in the folder you used last time.
+
+All of it is kept in `session.json` in the app's data folder (on macOS `~/Library/Application Support/wing-trainer`, on Windows `%APPDATA%\wing-trainer`, on Linux `~/.config/wing-trainer`). Delete that file to start fresh.
+
 ## Good to know
 
 - The sound is a **simulation**. The EQ uses standard filters; the gate and compressor behave like the console's but are not Behringer's algorithms. Use it to learn what a setting does and to compare settings, not to match a room to the decibel.

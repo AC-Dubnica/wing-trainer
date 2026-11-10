@@ -20,6 +20,7 @@ src/
     diff.ts              the list of changes against the snapshot
     multitrack.ts        which recorded track plays on which channel
     flow.ts              the signal-flow graph and the path through it
+    session.ts           what is remembered between runs (window, folders, where the work ended)
     duplicate.ts         copies a channel to a free channel number and a new input
   renderer/
     app.ts               the screen: strips, knobs, graphs, dialogs, meters
@@ -90,12 +91,19 @@ When the routing is edited in the Routing tab, this is done again, so a track fo
 
 `app.ts` builds the strips (one `Fader` description serves channels, buses, mains and matrices), the selected channel's sections, the rotary knobs (`knob()`: drag, wheel, keys, double-click to reset), the canvas graphs, the dialogs and the meters. `fader.ts` gives the fader travel; the meters and the dB scale use the same one. The channel colours are the console's twelve.
 
+## What is remembered
+
+`src/main/index.ts` keeps `session.json` in the user's data folder: the window (its size and place when not maximized, and whether it was maximized), the folder each file dialog used last, the path of the open snapshot, and a block of "work state" that the screen hands over. `src/shared/session.ts` reads it defensively (`sanitizeSession`: anything that is not right is dropped) and checks that a saved window position is on a screen that still exists (`isVisible`). The file is written a moment after the last change, through a temporary file that replaces the old one, so it is never left half written. The window opens maximized when nothing is saved.
+
+The work state (`WorkState` in `app.ts`) is the edited snapshot model, the fader order, the selection, the tab and layer, what is listened to and the recording folder. At start the screen asks the main process for the session, opens the snapshot file again, and, if the saved state belongs to that same file (and its channels fit it), puts the state back on top. A file that has gone, or a state from another version, is simply not used.
+
 ## Tests
 
 | What | How | Where |
 |---|---|---|
 | The snapshot reader, conversions, curves, fader travel, checks, change list, recording placement, the flow graph | unit tests (Vitest), against an anonymised sample | `tests/` |
 | The sound: faders, mute, sends, the gate, the compressor, EQ, low cut, solo, the matrix | the real app page renders the sample offline and the level is measured | `scripts/e2e-engine.mjs` (`npm run e2e`) |
+| What is remembered: the snapshot file, the window, the edits, the selection, the tab | the real app is run twice on a scratch data folder (`WING_TRAINER_USER_DATA`) and the second run must find everything as it was left | `scripts/e2e-session.mjs` (`npm run e2e`) |
 
 Not verified: how it sounds by ear against a real console, a real recording decoded in the app, and the Windows and Linux builds.
 
@@ -105,6 +113,7 @@ Not verified: how it sounds by ear against a real console, a real recording deco
 
 ## Dev hooks
 
+- `WING_TRAINER_USER_DATA=folder` uses that folder for the app's data (so a test can try the remembering without touching the real one); without it the hooks below never read or change what the app remembers.
 - `WING_TRAINER_EVAL="js"` runs JavaScript in the page, prints `EVAL <json>` and quits (used by the sound check).
 - `WING_TRAINER_SHOT=file.png` (optionally `WING_TRAINER_SHOT_JS` first, and `WING_TRAINER_SIZE=1280x720`) saves a picture of the window.
 

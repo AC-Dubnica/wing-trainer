@@ -29,6 +29,8 @@ const sty = <T extends HTMLElement>(e: T, css: Partial<CSSStyleDeclaration>): T 
 let base: Snapshot
 let cur: Snapshot
 let sourceName = 'sample setup'
+/** The file the snapshot was read from ('' = the built-in sample). */
+let snapshotPath = ''
 let engine: Engine | null = null
 let ctx: AudioContext | null = null
 let selected = 0
@@ -97,10 +99,11 @@ function changed(): void {
 
 // --- loading -------------------------------------------------------------------------------------------------------------
 
-async function useSnapshot(snap: Snapshot, name: string): Promise<void> {
+async function useSnapshot(snap: Snapshot, name: string, path = ''): Promise<void> {
   base = snap
   cur = structuredClone(snap)
   sourceName = name
+  snapshotPath = path
   recording = ''
   decoded.clear()
   singles.clear()
@@ -121,7 +124,7 @@ async function openSnapshot(): Promise<void> {
   const f = await window.trainer.openSnapshot()
   if (!f) return
   try {
-    await useSnapshot(parseSnapshot(JSON.parse(f.text)), f.name)
+    await useSnapshot(parseSnapshot(JSON.parse(f.text)), f.name, f.path)
   } catch (e) {
     status(`Could not open ${f.name}: ${(e as Error).message}`)
   }
@@ -134,7 +137,10 @@ async function decode(path: string): Promise<AudioBuffer> {
 
 async function openRecording(): Promise<void> {
   const r = await window.trainer.openRecordingFolder()
-  if (!r) return
+  if (r) await loadRecording(r)
+}
+
+async function loadRecording(r: { dir: string; files: { name: string; path: string; bytes: number }[] }): Promise<void> {
   const e = await ensureEngine()
   const mapping = mapTracks(cur, r.files.map((f) => f.name))
   if (!mapping.assigned.length) { status(`None of the ${r.files.length} files could be placed on a channel. Name the tracks like "Track 03.wav": the number is the console's USB recorder track.`); return }
@@ -185,6 +191,60 @@ async function openFileOnChannel(): Promise<void> {
   }
 }
 
+// --- remembering where the work ended -------------------------------------------------------------------------------------
+
+/** Everything needed to come back to where the work ended: the edited snapshot, the order of the faders, what was open. */
+interface WorkState {
+  v: 1
+  path: string
+  cur: Snapshot
+  order: number[]
+  selected: number
+  selectedOut: string
+  view: 'console' | 'routing'
+  layer: 'channels' | 'buses'
+  listen: Listen
+  recordingDir: string
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+function persist(): void {
+  if (persistTimer) clearTimeout(persistTimer)
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    if (!cur) return
+    const state: WorkState = { v: 1, path: snapshotPath, cur, order, selected, selectedOut, view, layer, listen, recordingDir: recording.startsWith('(') ? '' : recording }
+    void window.trainer.saveSession(state)
+  }, 500)
+}
+
+/** Takes the saved state back if it belongs to the snapshot that is open; anything that does not fit is left out. */
+async function restoreState(raw: unknown): Promise<void> {
+  const s = raw as Partial<WorkState> | null
+  if (!s || s.v !== 1 || s.path !== snapshotPath || !s.cur || !Array.isArray(s.cur.channels) || !Array.isArray(s.cur.buses) || !Array.isArray(s.cur.mains) || !Array.isArray(s.cur.matrices) || !Array.isArray(s.cur.outputs) || !Array.isArray(s.cur.inputs)) return
+  const known = new Set(base.channels.map((c) => c.id))
+  if (s.cur.channels.some((c) => !known.has(c.id) && !c.copyOf)) return // it was made from another version of this file
+  cur = s.cur
+  const ids = new Set(cur.channels.map((c) => c.id))
+  order = [...(Array.isArray(s.order) ? s.order : []).filter((id) => ids.has(id)), ...cur.channels.map((c) => c.id).filter((id) => !(s.order ?? []).includes(id))]
+  selected = ids.has(s.selected ?? -1) ? (s.selected as number) : cur.channels[0]?.id ?? 0
+  selectedOut = typeof s.selectedOut === 'string' && stripUi.has(s.selectedOut) ? s.selectedOut : ''
+  layer = s.layer === 'buses' ? 'buses' : 'channels'
+  listen = s.listen && ['main', 'bus', 'matrix'].includes(s.listen.kind) ? s.listen : listen
+  buildStrips()
+  buildDetail()
+  routing.render()
+  await rebuildEngine()
+  setView(s.view === 'routing' ? 'routing' : 'console')
+  const edits = diffSnapshots(base, cur).length
+  status(`Back where you left off: ${sourceName}${edits ? `, with your ${edits} change${edits === 1 ? '' : 's'}` : ''}.`)
+  if (s.recordingDir) {
+    const again = await window.trainer.openRecordingFolder(s.recordingDir)
+    if (again) await loadRecording(again)
+    else status(`The recording folder ${s.recordingDir} is not there any more: the channels play test signals.`)
+  }
+}
+
 // --- views ---------------------------------------------------------------------------------------------------------------
 
 const routing = createRouting($('routing'), {
@@ -213,6 +273,7 @@ const routing = createRouting($('routing'), {
 
 function setView(v: typeof view): void {
   view = v
+  persist()
   $('consoleView').hidden = v !== 'console'
   $('routing').hidden = v !== 'routing'
   buildTop()
@@ -314,6 +375,7 @@ function buildStrips(): void {
 }
 
 function select(f: Fader): void {
+  persist()
   if (f.kind === 'ch') { selected = f.id; selectedOut = '' } else selectedOut = keyOf(f.kind, f.id)
   refreshAllStrips()
   buildDetail()
@@ -599,7 +661,7 @@ function buildTop(): void {
   select.onchange = () => { const [kind, id] = select.value.split(':'); listen = { kind: kind as Listen['kind'], id: Number(id) }; engine?.listen(listen); refreshAllStrips() }
   outMeter = el('i')
   const viewBtn = (id: typeof view, label: string) => el<HTMLButtonElement>('button', { class: `tab ${view === id ? 'on' : ''}`, textContent: label, onclick: () => setView(id) })
-  const layerBtn = (id: typeof layer, label: string) => el<HTMLButtonElement>('button', { class: `tab ${layer === id ? 'on' : ''}`, textContent: label, onclick: () => { layer = id; buildStrips(); buildTop() } })
+  const layerBtn = (id: typeof layer, label: string) => el<HTMLButtonElement>('button', { class: `tab ${layer === id ? 'on' : ''}`, textContent: label, onclick: () => { layer = id; persist(); buildStrips(); buildTop() } })
   $('top').replaceChildren(
     el('div', { class: 'brand' }, el('b', { textContent: 'WING' }), el('span', { textContent: 'TRAINER' })),
     el('div', { class: 'tabs views' }, viewBtn('console', 'CONSOLE'), viewBtn('routing', 'ROUTING')),
@@ -616,6 +678,7 @@ function buildTop(): void {
 }
 
 function refreshTop(): void {
+  persist()
   const findings = checkSnapshot(cur).length
   const changes = diffSnapshots(base, cur).length + (orderChanged() ? 1 : 0)
   checksBtn.replaceChildren('CHECKS', ...(findings ? [el('span', { class: 'badge', textContent: String(findings) })] : []))
@@ -734,9 +797,23 @@ $('bank').addEventListener('wheel', (e) => {
 }, { passive: false })
 
 void (async () => {
-  await useSnapshot(parseSnapshot(sampleJson), 'sample setup')
+  const last = await window.trainer.loadSession().catch(() => ({ snapshot: null, state: null }))
+  let snap = parseSnapshot(sampleJson)
+  let name = 'sample setup'
+  let path = ''
+  if (last.snapshot) {
+    try {
+      snap = parseSnapshot(JSON.parse(last.snapshot.text))
+      name = last.snapshot.name
+      path = last.snapshot.path
+    } catch {
+      /* the file is not a snapshot any more: the sample opens */
+    }
+  }
+  await useSnapshot(snap, name, path)
+  await restoreState(last.state)
   requestAnimationFrame(tick)
 })()
 
 // For the end-to-end test.
-window.app = { get engine() { return engine }, get current() { return cur }, get base() { return base }, rebuildEngine, ensureEngine, Engine, testSignal }
+window.app = { get engine() { return engine }, get current() { return cur }, get base() { return base }, get snapshotPath() { return snapshotPath }, get sourceName() { return sourceName }, get state() { return { view, layer, selected, order, recording } }, rebuildEngine, ensureEngine, Engine, testSignal }

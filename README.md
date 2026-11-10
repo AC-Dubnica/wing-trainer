@@ -34,6 +34,10 @@ git push --follow-tags     # the tag starts .github/workflows/release.yml
 
 The workflow builds the installers on macOS (Apple silicon and Intel), Windows and Linux, and attaches them to a GitHub release for the tag. **Run workflow** on the Actions tab builds them as downloadable files only, without a release. The builds are **not code-signed**, so the first start needs one extra step (the release notes say which). `.github/workflows/ci.yml` runs the types, the unit tests and the build on all three systems for every push, and the sound check under a virtual display on Linux.
 
+## It remembers where you ended
+
+The window opens **maximized** (and later where you left it), the **snapshot** you had open is opened again, and your **work** is back: edits, copied channels, the order of the faders, the selected channel, the open tab. The file dialogs open in the folder you used last, and an open recording is read again. Details in the [user guide](docs/user-guide.md#what-the-app-remembers).
+
 ## The Routing tab
 
 ![The Routing tab: the path of one channel through the venue](docs/routing.png)
