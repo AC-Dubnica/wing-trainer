@@ -77,7 +77,7 @@ The snapshot says which input each recorder track took, and which channels liste
 
 The lines show the signal: blue to a main, amber a bus send, purple to a matrix, green to an output, grey from an input. A dashed line is a muted channel or bus.
 
-**Follow a signal.** Click any item: its whole path lights up, both ways (where the signal comes from, and every output it reaches). Click it again to clear. Bus sends are drawn only for the clicked path, or all of them with **show all bus sends**.
+**Follow a signal.** Click any item: its whole path lights up, both ways (where the signal comes from, and every output it reaches). The item you clicked has a **white** outline, every other input, channel (fader), mix and output on its path an **amber** outline, and everything else fades. A line above the diagram lists the path in words, by column (inputs, channels, mixes, outputs). Click the item again to clear. Bus sends are drawn only for the clicked path, or all of them with **show all bus sends**.
 
 **Remap, without a console.** The two tables on the right change the routing in the app:
 

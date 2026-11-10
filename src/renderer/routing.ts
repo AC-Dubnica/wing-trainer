@@ -32,6 +32,8 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
   let svg: SVGSVGElement | null = null
   let wrap: HTMLElement | null = null
   let paintEdges: () => void = () => {}
+  const pathInfo = el('div', { class: 'pathinfo' })
+  let nodes: FlowNode[] = []
 
   const byOrder = (nodes: FlowNode[]): FlowNode[] => {
     const order = deps.order()
@@ -56,7 +58,17 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     const on = selected ? trace(edges, selected) : null
     for (const [id, e] of nodeEls) {
       e.classList.toggle('sel', id === selected)
+      e.classList.toggle('path', !!on && on.has(id) && id !== selected)
       e.classList.toggle('dim', !!on && !on.has(id))
+    }
+    // In words: everything on the path of the selected item, by column.
+    if (!on) {
+      pathInfo.replaceChildren(el('span', { class: 'dim', textContent: 'Click a channel, a mix or an output to follow its signal.' }))
+    } else {
+      const label = (kind: FlowNode['kind']): string[] => nodes.filter((n) => on.has(n.id) && n.kind === kind && n.id !== selected).map((n) => (kind === 'in' ? `${n.label}${n.sub ? ` ${n.sub}` : ''}` : n.label))
+      const part = (title: string, items: string[]): HTMLElement => el('span', { class: 'pi' }, el('b', { textContent: `${title} ` }), items.length ? items.join(', ') : '-')
+      const sel = nodes.find((n) => n.id === selected)
+      pathInfo.replaceChildren(el('b', { textContent: `${sel?.label ?? ''}: ` }), part('inputs', label('in')), part('channels', label('ch')), part('mixes', [...label('bus'), ...label('main'), ...label('matrix')]), part('outputs', label('out')))
     }
     paintEdges()
   }
@@ -64,6 +76,7 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
   function diagram(): HTMLElement {
     const flow = buildFlow(deps.snap())
     edges = flow.edges
+    nodes = flow.nodes
     nodeEls.clear()
     const of = (kind: FlowNode['kind']): FlowNode[] => flow.nodes.filter((n) => n.kind === kind)
     const col = (title: string, kids: HTMLElement[]): HTMLElement => el('div', { class: 'fcol' }, el('div', { class: 'fct', textContent: title }), ...kids)
@@ -190,9 +203,9 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     sends.onchange = () => { showSends = sends.checked; paintEdges() }
     const legend = el('div', { class: 'legend' },
       ...(['input', 'main', 'send', 'matrix', 'patch'] as const).map((k) => el('span', {}, el('i', { style: `background:${EDGE_COLOR[k]}` } as unknown as Partial<HTMLElement>), { input: 'input', main: 'to a main', send: 'bus send', matrix: 'to matrix', patch: 'to an output' }[k])),
-      el('label', { class: 'sendsw' }, sends, ' show all bus sends'), el('span', { class: 'dim', textContent: 'Click a channel, a mix or an output to follow its signal.' }))
+      el('label', { class: 'sendsw' }, sends, ' show all bus sends'))
     const d = diagram()
-    root.replaceChildren(el('div', { class: 'rleft' }, legend, d), el('div', { class: 'rright' }, fadersTable(), outputsTable()))
+    root.replaceChildren(el('div', { class: 'rleft' }, legend, pathInfo, d), el('div', { class: 'rright' }, fadersTable(), outputsTable()))
     d.scrollTop = keepScroll
     requestAnimationFrame(() => { highlight(); paintEdges() })
   }
