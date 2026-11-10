@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.snap
+*.wav
+*.flac
+.DS_Store

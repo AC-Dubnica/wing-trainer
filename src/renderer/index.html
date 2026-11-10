@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WING Trainer</title>
+    <style>
+      :root { color-scheme: dark; --bg: #14161b; --panel: #1c1f27; --line: #2c313c; --text: #e6e8ee; --dim: #8b93a3; --accent: #3b82f6; --warn: #f59e0b; --bad: #ef4444; --good: #22c55e }
+      * { box-sizing: border-box }
+      html, body { height: 100%; margin: 0 }
+      body { background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden }
+      button, select, input { font: inherit; color: inherit }
+      button { background: #262b36; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer }
+      button:hover:not(:disabled) { background: #2e3441 } button:disabled { opacity: .45; cursor: default }
+      button.primary { background: var(--accent); border-color: var(--accent) } button.on { background: var(--accent); border-color: var(--accent) }
+      select { background: #262b36; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px }
+      header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--line) }
+      header h1 { font-size: 15px; margin: 0 10px 0 0 } header .grow { flex: 1 } header .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px }
+      .badge { background: var(--warn); color: #111; border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; margin-left: 4px }
+      .outmeter { width: 120px; height: 10px; background: #0d0f13; border: 1px solid var(--line); border-radius: 3px; overflow: hidden } .outmeter > i { display: block; height: 100%; width: 0; background: var(--good) }
+      main { min-height: 0; display: grid; grid-template-rows: minmax(250px, 1fr) minmax(220px, auto) }
+      #strips { display: flex; gap: 6px; padding: 12px 14px; overflow-x: auto; align-items: stretch }
+      .strip { flex: 0 0 74px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer }
+      .strip.sel { outline: 2px solid var(--accent) } .strip.silent { opacity: .55 }
+      .strip .nm { font-size: 11px; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis } .strip .no { font-size: 10px; color: var(--dim) }
+      .strip .bar { width: 100%; height: 4px; border-radius: 2px }
+      .strip .gr { font-size: 10px; color: var(--warn); height: 13px; white-space: nowrap }
+      .strip .ms { display: flex; gap: 4px } .strip .ms button { padding: 2px 8px; font-weight: 700 }
+      .strip .ms button.mute.on { background: var(--bad); border-color: var(--bad) } .strip .ms button.solo.on { background: var(--warn); border-color: var(--warn); color: #111 }
+      .strip .fd { flex: 1; min-height: 0; display: flex; gap: 6px; align-items: stretch }
+      .strip .vm { width: 8px; background: #0d0f13; border: 1px solid var(--line); border-radius: 3px; position: relative; overflow: hidden } .strip .vm > i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--good); height: 0 }
+      .strip input[type=range].fader { writing-mode: vertical-lr; direction: rtl; width: 24px; height: 100%; margin: 0; accent-color: var(--accent) }
+      .strip .db { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--dim) }
+      #detail { border-top: 1px solid var(--line); background: var(--panel); padding: 10px 14px; overflow: auto }
+      #detail h2 { margin: 0 12px 0 0; font-size: 14px } .tabs { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap } .tabs .grow { flex: 1 }
+      .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px }
+      fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0; padding: 8px 12px 10px } legend { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; padding: 0 6px }
+      .row { display: grid; grid-template-columns: 110px 1fr 74px; align-items: center; gap: 8px; margin: 3px 0 } .row label { color: var(--dim) } .row .v { text-align: right; font-variant-numeric: tabular-nums }
+      .row input[type=range] { width: 100%; accent-color: var(--accent) } .hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 4px } .hdr b { flex: 1 }
+      table { border-collapse: collapse; width: 100% } td, th { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--line) } th { color: var(--dim); font-weight: 500 }
+      .finding { padding: 4px 0 } .finding.warn::before { content: '⚠ '; color: var(--warn) } .finding.note::before { content: '• '; color: var(--dim) }
+      footer { padding: 6px 14px; color: var(--dim); background: var(--panel); border-top: 1px solid var(--line); min-height: 28px }
+      dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 16px; width: min(720px, 90vw); max-height: 80vh } dialog::backdrop { background: #0008 }
+      dialog h3 { margin: 0 0 10px } dialog .body { overflow: auto; max-height: 55vh; margin-bottom: 12px } dialog .btns { display: flex; gap: 8px; justify-content: flex-end }
+      .dim { color: var(--dim) } .muted { opacity: .5 }
+    </style>
+  </head>
+  <body>
+    <header id="top"></header>
+    <main>
+      <section id="strips" aria-label="Channels"></section>
+      <section id="detail" aria-label="Selected channel"></section>
+    </main>
+    <footer id="status"></footer>
+    <dialog id="dlg"></dialog>
+    <script src="app.js"></script>
+  </body>
+</html>

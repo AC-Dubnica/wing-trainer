@@ -1,0 +1,20 @@
+{
+  "name": "wing-trainer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A practice console for a Behringer WING setup: load a snapshot and a recording, and try the mix.",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "start": "npm run build && electron .",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "npm run build && node scripts/e2e-engine.mjs"
+  },
+  "devDependencies": {
+    "electron": "^45.2.2",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

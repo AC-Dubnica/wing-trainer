@@ -1,0 +1,94 @@
+/** The part of a Behringer WING snapshot that the trainer plays with: channels, buses, mains and matrices as plain values. */
+
+/** Below this a level means "off" (the WING stores -144 dB for a fader or send that is all the way down). */
+export const OFF_DB = -100
+
+/** Where an input comes from on the console: a group (LCL, AUX, A, B, C, USB, ...) and the number inside it. */
+export interface Source { grp: string; in: number }
+
+export interface EqBand { gain: number; freq: number; q: number }
+
+export interface Eq {
+  on: boolean
+  low: EqBand & { shelf: boolean }
+  bands: [EqBand, EqBand, EqBand, EqBand]
+  high: EqBand & { shelf: boolean }
+}
+
+export interface Filters {
+  lowCut: { on: boolean; freq: number }
+  highCut: { on: boolean; freq: number }
+}
+
+/** All times in milliseconds, levels in dB. */
+export interface Gate { on: boolean; threshold: number; range: number; attack: number; hold: number; release: number }
+
+export interface Comp {
+  on: boolean
+  /** The WING's own name of the dynamics model: COMP is simulated, others (limiters, N-STR ...) are shown but pass the signal. */
+  model: string
+  threshold: number
+  ratio: number
+  /** In dB (the WING stores 0 to 5). */
+  knee: number
+  attack: number
+  release: number
+  makeup: number
+}
+
+/** A send from a channel to a bus. */
+export interface Send { bus: number; on: boolean; level: number; pre: boolean }
+
+/** A channel's (or a bus's) assignment to a main. */
+export interface MainSend { main: number; on: boolean; level: number }
+
+export interface Channel {
+  id: number
+  name: string
+  /** The console colour number, kept to group strips by colour. */
+  color: number
+  source: Source
+  /** False when the input is patched to nothing ("OFF"): the channel is there but silent. */
+  hasSource: boolean
+  /** Input trim in dB. */
+  trim: number
+  mute: boolean
+  /** Fader in dB, OFF_DB or lower = all the way down. */
+  fader: number
+  /** -100 (left) to 100 (right). */
+  pan: number
+  filters: Filters
+  eq: Eq
+  gate: Gate
+  comp: Comp
+  sends: Send[]
+  mains: MainSend[]
+}
+
+export interface MatrixSend { mtx: number; on: boolean; level: number }
+
+export interface Bus {
+  id: number
+  name: string
+  mute: boolean
+  fader: number
+  mains: MainSend[]
+  matrix: MatrixSend[]
+}
+
+export interface Main { id: number; name: string; mute: boolean; fader: number }
+export interface Matrix { id: number; name: string; mute: boolean; fader: number }
+
+/** One recorder track: which console input the USB (or card) recorder takes as its track number `track`. */
+export interface RecorderTrack { track: number; source: Source }
+
+export interface Snapshot {
+  /** When and with which firmware the console saved it, if it says. */
+  created: string
+  firmware: string
+  channels: Channel[]
+  buses: Bus[]
+  mains: Main[]
+  matrices: Matrix[]
+  usbOut: RecorderTrack[]
+}
