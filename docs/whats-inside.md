@@ -23,6 +23,7 @@ src/
     session.ts           what is remembered between runs (window, folders, where the work ended)
     duplicate.ts         copies a channel to a free channel number and a new input
     mixes.ts             adds, renames and removes buses and matrices
+    export.ts            writes the edits back into the snapshot file
   renderer/
     app.ts               the screen: strips, knobs, graphs, dialogs, meters
     engine.ts            the audio graph
@@ -84,6 +85,12 @@ When the routing is edited in the Routing tab, this is done again, so a track fo
 
 `duplicate.ts` clones a channel (a deep copy, so the two are independent), gives it the lowest free channel number (the console has 40), the new input and a name, and marks it `copyOf` the original. The screen puts it next to the original on the faders, rebuilds the audio graph and the Routing tab, and the change list reports it as added. Because a recording is placed by input (see above), a track recorded on that input plays on the copy as well.
 
+## Saving a snapshot
+
+`export.ts` writes the edits back into the snapshot file the app read. It keeps the original JSON (the screen holds the raw file next to the model), compares the snapshot as it was loaded with the edited one, and writes only the values that differ, at the places they were read from and in the file's own units: a shelf flag becomes `SHV` or `PEQ`, the compressor's knee goes from dB back to the file's 0 to 5, a ratio written as text (`"4:1"`) stays text, an off input is `OFF`. A copied channel gets a clone of the original strip in a free slot first; a new bus or matrix is written into its slot; a removed one is emptied (no name, assigned to nothing, sends off); an output that is no longer patched goes back to `OFF`. Everything else in the file is left alone. The main process saves it under a new name (it refuses the name of the file that was opened) and puts a list of the changes beside it.
+
+The tests check that an unedited export equals the original, that one edit changes exactly one path, and that reading an exported file back gives the edited snapshot; the same checks were run on a real snapshot. What has not been done is loading an exported file on a console.
+
 ## Buses and matrices
 
 `mixes.ts` finds the lowest free bus (16) or matrix (8) number and adds or removes one in the model. A new bus has every channel's send to it switched off (a slot that was empty in the snapshot may still hold old values, so they are cleared), no main assignment and no matrix send; removing one switches the sends to it off and takes the output ports that carried it out of the patch. The screen makes everything again afterwards (the strips, the panel, the Routing tab, the audio graph), and the change list reports the additions, renames and removals.
@@ -108,6 +115,7 @@ The work state (`WorkState` in `app.ts`) is the edited snapshot model, the fader
 |---|---|---|
 | The snapshot reader, conversions, curves, fader travel, checks, change list, recording placement, the flow graph | unit tests (Vitest), against an anonymised sample | `tests/` |
 | The sound: faders, mute, sends, the gate, the compressor, EQ, low cut, solo, the matrix | the real app page renders the sample offline and the level is measured | `scripts/e2e-engine.mjs` (`npm run e2e`) |
+| Saving a snapshot: unedited = identical, one edit = one path, read back = what was edited, copies, buses and matrices | unit tests (and the same checks on a real snapshot, by hand) | `tests/export.test.ts` |
 | What is remembered: the snapshot file, the window, the edits, the selection, the tab | the real app is run twice on a scratch data folder (`WING_TRAINER_USER_DATA`) and the second run must find everything as it was left | `scripts/e2e-session.mjs` (`npm run e2e`) |
 
 Not verified: how it sounds by ear against a real console, a real recording decoded in the app, and the Windows and Linux builds.

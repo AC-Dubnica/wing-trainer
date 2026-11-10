@@ -4,6 +4,7 @@ import { checkSnapshot, type Finding } from '../shared/checks'
 import { compCurve, eqCurve, gateCurve } from '../shared/curves'
 import { describeChange, diffSnapshots } from '../shared/diff'
 import { duplicateChannel, nextFreePort } from '../shared/duplicate'
+import { exportSnapshot } from '../shared/export'
 import { addBus, addMatrix, freeBusId, freeMatrixId, NAME_LENGTH, removeBus, removeMatrix, renameMix } from '../shared/mixes'
 import type { Channel, Snapshot } from '../shared/model'
 import { INPUT_GROUPS, INPUT_PORTS, MAX_BUSES, MAX_CHANNELS, MAX_MATRICES, OFF_DB } from '../shared/model'
@@ -32,6 +33,9 @@ let cur: Snapshot
 let sourceName = 'sample setup'
 /** The file the snapshot was read from ('' = the built-in sample). */
 let snapshotPath = ''
+/** The snapshot file as it was read (JSON and text), kept so that an edited copy can be saved from it. Null for the built-in sample. */
+let baseRaw: unknown = null
+let baseText = ''
 let engine: Engine | null = null
 let ctx: AudioContext | null = null
 let selected = 0
@@ -100,8 +104,10 @@ function changed(): void {
 
 // --- loading -------------------------------------------------------------------------------------------------------------
 
-async function useSnapshot(snap: Snapshot, name: string, path = ''): Promise<void> {
+async function useSnapshot(snap: Snapshot, name: string, path = '', file: { raw: unknown; text: string } | null = null): Promise<void> {
   base = snap
+  baseRaw = file?.raw ?? null
+  baseText = file?.text ?? ''
   cur = structuredClone(snap)
   sourceName = name
   snapshotPath = path
@@ -125,7 +131,8 @@ async function openSnapshot(): Promise<void> {
   const f = await window.trainer.openSnapshot()
   if (!f) return
   try {
-    await useSnapshot(parseSnapshot(JSON.parse(f.text)), f.name, f.path)
+    const raw = JSON.parse(f.text)
+    await useSnapshot(parseSnapshot(raw), f.name, f.path, { raw, text: f.text })
   } catch (e) {
     status(`Could not open ${f.name}: ${(e as Error).message}`)
   }
@@ -690,6 +697,7 @@ function buildTop(): void {
     el<HTMLButtonElement>('button', { class: 'flat', textContent: 'RECORDING…', onclick: () => void openRecording() }),
     el<HTMLButtonElement>('button', { class: 'flat', textContent: 'TEST SIGNALS', title: 'Play a test signal on every channel again', onclick: () => void useTestSignals() }),
     el('span', { class: 'sep' }), checksBtn, changesBtn,
+    el<HTMLButtonElement>('button', { class: 'flat', textContent: 'SAVE AS SNAPSHOT…', title: baseRaw === null ? 'Open your own snapshot first: the sample is a cut-down copy' : 'Save a new snapshot file with your changes written in', onclick: () => showExport() }),
     el<HTMLButtonElement>('button', { class: 'flat', textContent: 'RESET', title: 'Back to the snapshot as it was loaded', onclick: () => void reset() }))
   refreshTop()
 }
@@ -828,11 +836,51 @@ function showCopy(c: Channel): void {
   dlg.showModal()
 }
 
+/** Saves the edited snapshot as a new file: the original file's content with the edits written in. */
+function showExport(): void {
+  const dlg = $<HTMLDialogElement>('dlg')
+  if (baseRaw === null) {
+    dialog('Save as a snapshot', el('p', { textContent: 'Open your own snapshot first (SNAPSHOT…). The built-in sample is a cut-down copy, so a file made from it would not be a complete snapshot.' }))
+    return
+  }
+  const lines = diffSnapshots(base, cur).map(describeChange)
+  const orderNote = orderChanged() ? ['The order of the faders (the console\'s layers) is not saved.'] : []
+  const msg = el('div', { class: 'finding', textContent: '' })
+  const save = el<HTMLButtonElement>('button', { class: 'flat primary', textContent: 'SAVE AS…', onclick: async () => {
+    let json: unknown
+    let written: string[]
+    try {
+      const r = exportSnapshot(baseRaw, base, cur)
+      json = r.json
+      written = r.written
+    } catch (e) {
+      msg.textContent = `Could not make the file: ${(e as Error).message}`
+      return
+    }
+    const indent = /^\{\r?\n([ \t]+)"/.exec(baseText)?.[1]
+    const text = JSON.stringify(json, null, indent)
+    const stem = sourceName.replace(/\.[^.]+$/, '')
+    const notes = [`Changes made in WING Trainer to ${sourceName}`, `Saved ${new Date().toISOString()}`, '', ...(lines.length ? lines : ['(no changes)']), ...orderNote, '', `${written.length} values were written into the file.`, 'Not verified on a console: load it into a spare snapshot slot first, and keep the original.'].join('\n')
+    const res = await window.trainer.saveSnapshot({ text, suggestedName: `${stem} (edited).snap`, notes })
+    if (res === null) return
+    if ('error' in res) { msg.textContent = res.error; return }
+    dlg.close()
+    status(`Saved ${res.path} (${written.length} values written). A list of the changes is beside it. Load it on the console from a USB stick, into a spare slot first.`)
+  } })
+  dlg.replaceChildren(el('h3', { textContent: 'Save as a snapshot' }),
+    el('div', { class: 'body' },
+      el('p', { textContent: `A new file is made from ${sourceName} with your ${lines.length} change${lines.length === 1 ? '' : 's'} written in. The original file is never changed, and everything the trainer does not show (effects, DCA groups, layers, preamps) stays as the console saved it.` }),
+      ...orderNote.map((n) => el('p', { class: 'dim', textContent: n })),
+      el('p', { class: 'dim', textContent: 'This has not been tried on a real console. Load the file into a spare snapshot slot first, check it, and keep the original.' }), msg),
+    el('div', { class: 'btns' }, el<HTMLButtonElement>('button', { class: 'flat', textContent: 'CANCEL', onclick: () => dlg.close() }), save))
+  dlg.showModal()
+}
+
 function showChanges(): void {
   const lines = diffSnapshots(base, cur).map(describeChange)
   if (orderChanged()) lines.push(`Fader order: ${order.map((id) => channel(id)?.name || id).join(', ')}`)
   const copy = el<HTMLButtonElement>('button', { class: 'flat', textContent: 'COPY', onclick: () => void navigator.clipboard.writeText(lines.join('\n')) })
-  dialog('What you changed', el('div', {}, el('p', { class: 'dim', textContent: 'The trainer does not write snapshots. Make these changes on the console to use them.' }), ...(lines.length ? lines.map((l) => el('div', { class: 'finding', textContent: l })) : [el('div', { class: 'dim', textContent: 'Nothing changed yet.' })])), lines.length ? [copy] : [])
+  dialog('What you changed', el('div', {}, el('p', { class: 'dim', textContent: 'You can repeat these changes on the console, or save them in a new snapshot file with SAVE AS SNAPSHOT… in the top bar.' }), ...(lines.length ? lines.map((l) => el('div', { class: 'finding', textContent: l })) : [el('div', { class: 'dim', textContent: 'Nothing changed yet.' })])), lines.length ? [copy] : [])
 }
 
 // --- meters --------------------------------------------------------------------------------------------------------------
@@ -871,19 +919,22 @@ void (async () => {
   let snap = parseSnapshot(sampleJson)
   let name = 'sample setup'
   let path = ''
+  let file: { raw: unknown; text: string } | null = null
   if (last.snapshot) {
     try {
-      snap = parseSnapshot(JSON.parse(last.snapshot.text))
+      const raw = JSON.parse(last.snapshot.text)
+      snap = parseSnapshot(raw)
+      file = { raw, text: last.snapshot.text }
       name = last.snapshot.name
       path = last.snapshot.path
     } catch {
       /* the file is not a snapshot any more: the sample opens */
     }
   }
-  await useSnapshot(snap, name, path)
+  await useSnapshot(snap, name, path, file)
   await restoreState(last.state)
   requestAnimationFrame(tick)
 })()
 
 // For the end-to-end test.
-window.app = { get engine() { return engine }, get current() { return cur }, get base() { return base }, get snapshotPath() { return snapshotPath }, get sourceName() { return sourceName }, get state() { return { view, layer, selected, order, recording } }, rebuildEngine, ensureEngine, Engine, testSignal }
+window.app = { get engine() { return engine }, get current() { return cur }, get base() { return base }, get snapshotPath() { return snapshotPath }, exportText: () => (baseRaw === null ? null : JSON.stringify(exportSnapshot(baseRaw, base, cur).json)), get sourceName() { return sourceName }, get state() { return { view, layer, selected, order, recording } }, rebuildEngine, ensureEngine, Engine, testSignal }

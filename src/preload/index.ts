@@ -9,6 +9,8 @@ const api = {
   saveSession: (state: unknown): Promise<void> => ipcRenderer.invoke('session:save', state),
   forgetSnapshot: (): Promise<void> => ipcRenderer.invoke('session:sample'),
   openSnapshot: (): Promise<SnapshotFile | null> => ipcRenderer.invoke('snapshot:open'),
+  /** Saves the edited snapshot under a new name; null when cancelled. */
+  saveSnapshot: (req: { text: string; suggestedName: string; notes: string }): Promise<{ path: string; notes: string } | { error: string } | null> => ipcRenderer.invoke('snapshot:save', req),
   /** Asks for a folder, or with `again` opens that folder without asking. */
   openRecordingFolder: (again?: string): Promise<{ dir: string; files: AudioFile[] } | null> => ipcRenderer.invoke('audio:folder', again),
   openAudioFile: (): Promise<AudioFile | null> => ipcRenderer.invoke('audio:file'),

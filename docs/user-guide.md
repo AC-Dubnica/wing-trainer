@@ -117,7 +117,29 @@ Output C 7: Source MAIN 1 -> MAIN 2
 Fader order: PREACHER, SINGER 1, WIRELESS 1, ...
 ```
 
-**COPY** puts the list on the clipboard. The trainer does **not** write snapshots: to use a result, make the same changes on the console. **RESET** goes back to the snapshot.
+**COPY** puts the list on the clipboard. To use a result, repeat the changes on the console, or save them as a new snapshot file (next section). **RESET** goes back to the snapshot.
+
+## Save as a snapshot
+
+**SAVE AS SNAPSHOT…** in the top bar makes a **new snapshot file** from your own snapshot with your edits written in. (It needs a snapshot you opened with SNAPSHOT…: the built-in sample is a cut-down copy and cannot be saved.)
+
+1. Press **SAVE AS SNAPSHOT…**. The dialog says how many changes will be written.
+2. **SAVE AS…** asks where to put the file; the name suggested is `<your file> (edited).snap`. The original file is **never overwritten**: choosing its name is refused.
+3. Beside it, `<name>.changes.txt` lists the changes in words.
+4. Put the file on a USB stick (or open it in WING-Edit) and load it on the console like any snapshot.
+
+**What is written.** Only the values that differ from the snapshot as you opened it, in the file's own names and units:
+
+- channels: name, input, trim, fader, mute, pan, low and high cut, the six EQ bands (and shelf or bell), the gate, the compressor (on, threshold, ratio, knee, attack, release, make-up), the sends to buses (level, on, pre or post) and the assignments to mains;
+- **copied channels:** the copy gets the original's whole strip in a free channel slot, then what you changed on it;
+- **buses and matrices:** added (name, fader, mute, assignments), renamed, removed (the slot is emptied, the sends to it switched off), fader, mute, sends to matrices;
+- the mains' fader and mute, and the **output patch** (including the recorder tracks).
+
+**What stays as it was.** Everything else in the file: effects, DCA groups, the console's layers, preamps and input port names, the routing of the effects, the settings. The **order of the faders** is not written (it is a trainer feature, not the console's layer setting).
+
+**Not tried on a real console.** The file keeps the console's own structure and only changes values, and a test reads an exported file back and finds exactly what was edited, but I could not load one on a WING. Load it into a **spare snapshot slot** first, check the channels and the routing, and keep your original.
+
+It is a good idea to try it first with a small change: one fader or one gate attack.
 
 ## What the app remembers
 

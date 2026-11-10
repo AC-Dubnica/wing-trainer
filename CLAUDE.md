@@ -33,5 +33,5 @@ Dev hooks of the main process: `WING_TRAINER_EVAL="js"` runs JS in the page, pri
 ## Constraints
 
 - A real snapshot holds names of people and the console's serial number: never commit one (`*.snap` is ignored). The sample in `fixtures/` is anonymised; keep it that way.
-- The trainer never writes a snapshot or talks to a console.
+- The trainer never talks to a console. It can save a new snapshot file (`src/shared/export.ts`: the original JSON with only the edited values written in, never over the file it came from), but that has not been verified on a real console.
 - Not verified: the sound by ear against a real console, a recording decoded in the app (only the offline test signals were measured), Windows and Linux.

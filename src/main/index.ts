@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
-import { basename, dirname, extname, join } from 'node:path'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import { emptySession, isVisible, sanitizeSession, type Session } from '../shared/session'
 
 const AUDIO = new Set(['.wav', '.flac', '.mp3', '.ogg', '.aif', '.aiff', '.m4a'])
@@ -137,6 +137,25 @@ ipcMain.handle('snapshot:open', async () => {
   const file = readSnapshot(path)
   if (file) { session.dirs.snapshot = dirname(path); session.snapshotPath = path; saveSoon() }
   return file
+})
+
+/** Saves an edited snapshot under a new name (never over the file it came from), with a note of what was changed beside it. */
+ipcMain.handle('snapshot:save', async (_e, req: { text: string; suggestedName: string; notes: string }): Promise<{ path: string; notes: string } | { error: string } | null> => {
+  if (typeof req?.text !== 'string' || typeof req.suggestedName !== 'string') return { error: 'Nothing to save.' }
+  const r = await dialog.showSaveDialog(win!, { title: 'Save the edited snapshot as', defaultPath: join(startDir(session.dirs.snapshot) ?? app.getPath('documents'), req.suggestedName), filters: [{ name: 'WING snapshot', extensions: ['snap'] }] })
+  if (r.canceled || !r.filePath) return null
+  const path = r.filePath
+  if (session.snapshotPath && resolve(path) === resolve(session.snapshotPath)) return { error: 'That is the file you opened. Choose another name: the original is never overwritten.' }
+  try {
+    writeFileSync(path, req.text)
+    const notes = path.replace(/\.[^./\\]+$/, '') + '.changes.txt'
+    writeFileSync(notes, req.notes)
+    session.dirs.snapshot = dirname(path)
+    saveSoon()
+    return { path, notes }
+  } catch (e) {
+    return { error: `Could not save the file: ${(e as Error).message}` }
+  }
 })
 
 const listAudio = (dir: string): { dir: string; files: { name: string; path: string; bytes: number }[] } | null => {

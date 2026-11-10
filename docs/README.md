@@ -18,6 +18,6 @@ WING Trainer is a practice console for a Behringer WING setup. You open a snapsh
 - **Mix:** faders, mute, solo, pan, low and high cut, a six-band EQ, gate and compressor, sends to buses and mains.
 - **Routing:** see the signal flow of the whole venue, light up the path of any channel, and remap inputs, outputs and the order of the faders.
 - **Checks and Changes:** a list of trouble spots in the settings, and a list of everything you changed, in words.
-- It is a **simulator**: its sound is close to the console's, not identical, and it never writes a snapshot or talks to a console.
+- It is a **simulator**: its sound is close to the console's, not identical, and it never talks to a console. It can save your edits as a **new snapshot file** (never over the original) for you to load on the console; that has not been tried on a real console yet.
 
 The README in the root of the repository has the short version and the commands to run and package the app.

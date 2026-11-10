@@ -49,7 +49,7 @@ const session1 = JSON.parse(readFileSync(join(data, 'session.json'), 'utf8'))
 // Second run: nothing is done by hand; everything must be as it was left
 const second = run(`(async () => { ${ready}
   const cur = window.app.current
-  return { path: window.app.snapshotPath, name: window.app.sourceName, state: window.app.state, attack14: cur.channels.find((c) => c.id === 14).gate.attack, fader13: cur.channels.find((c) => c.id === 13).fader, copies: cur.channels.filter((c) => c.copyOf).length, routingShown: !document.getElementById('routing').hidden, outer: [outerWidth, outerHeight], status: document.getElementById('msg').textContent }
+  return { path: window.app.snapshotPath, name: window.app.sourceName, state: window.app.state, attack14: cur.channels.find((c) => c.id === 14).gate.attack, fader13: cur.channels.find((c) => c.id === 13).fader, copies: cur.channels.filter((c) => c.copyOf).length, exported: window.app.exportText(), routingShown: !document.getElementById('routing').hidden, outer: [outerWidth, outerHeight], status: document.getElementById('msg').textContent }
 })()`)
 
 // A snapshot file that has gone is not a reason to fail: the sample opens
@@ -69,6 +69,7 @@ const checks = [
   ['the edits are still there: a fader, a gate attack, a copied channel', second.fader13 === first.fader13 && second.attack14 === 33 && second.copies === 1, j([second.fader13, second.attack14, second.copies])],
   ['the selection, the open tab and the order of the faders come back', second.state.selected === first.selected && second.routingShown && j(second.state.order) === j(first.order) && second.state.view === 'routing', j(second.state)],
   ['the app says it is back where it was left', /Back where you left off/.test(second.status), second.status],
+  ['the edited snapshot can be written out: the exported file holds the edits, the copy, and nothing else changed', (() => { try { const x = JSON.parse(second.exported); const o = JSON.parse(readFileSync(new URL('../fixtures/sample.snap.json', import.meta.url).pathname, 'utf8')); return x.ae_data.ch['14'].gate.att === 33 && x.ae_data.ch['4'].name === 'SINGER 2 copy' && JSON.stringify(x.ae_data.ch['15']) === JSON.stringify(o.ae_data.ch['15']) && JSON.stringify(x.ae_data.bus) === JSON.stringify(o.ae_data.bus) } catch { return false } })(), ''],
   ['a snapshot file that has gone does not stop the app: the sample opens', third.path === '' && third.name === 'sample setup' && third.channels === 15, j(third)],
   ['a window position that is off every screen is not used', fourth.ok === true, j(fourth)],
 ]

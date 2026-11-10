@@ -34,6 +34,12 @@ git push --follow-tags     # the tag starts .github/workflows/release.yml
 
 The workflow builds the installers on macOS (Apple silicon and Intel), Windows and Linux, and attaches them to a GitHub release for the tag. **Run workflow** on the Actions tab builds them as downloadable files only, without a release. The builds are **not code-signed**, so the first start needs one extra step (the release notes say which). `.github/workflows/ci.yml` runs the types, the unit tests and the build on all three systems for every push, and the sound check under a virtual display on Linux.
 
+## Save your edits as a snapshot
+
+**SAVE AS SNAPSHOT…** (top right, when you have opened your own snapshot) writes a **new snapshot file**: your original file with the edits written in. Only the values you changed are written; everything the trainer does not show (effects, DCA groups, layers, preamps) stays exactly as the console saved it, and the original file is never changed or overwritten. A list of the changes is saved beside it (`... (edited).changes.txt`). What it writes: channel settings (name, input, trim, fader, mute, pan, filters, EQ, gate, compressor, sends, main assignments), copied channels, added, renamed and removed buses and matrices, the mains' fader and mute, and the output patch. It does not write the order of the faders.
+
+Put the file on a USB stick and load it on the console like any snapshot. **This has not been tried on a real console yet:** load it into a spare snapshot slot first, check it, and keep your original. See the [user guide](docs/user-guide.md#save-as-a-snapshot) for the details.
+
 ## It remembers where you ended
 
 The window opens **maximized** (and later where you left it), the **snapshot** you had open is opened again, and your **work** is back: edits, copied channels, the order of the faders, the selected channel, the open tab. The file dialogs open in the folder you used last, and an open recording is read again. Details in the [user guide](docs/user-guide.md#what-the-app-remembers).
@@ -61,7 +67,7 @@ It all works on the snapshot in the app, with nothing connected: the trainer nev
    - Decoded audio takes a lot of memory: use an excerpt of two to ten minutes, and files up to 200 MB.
 3. **Play** starts every channel together and loops them. **Listen to** chooses what the speakers get: a main, a bus (a monitor mix or the stream mix) or a matrix. **S** (solo) listens to that channel alone.
 4. Click a channel to see its settings below: **input** (trim, pan, low and high cut), **gate** and **dynamics** with their curves, a six-band **EQ** with its response curve, and its **sends** (to the buses and the mains, pre or post fader). Turn a knob by dragging it up or down (hold Shift for fine steps), with the wheel or the arrow keys; double-click to put it back. **CHANNELS / BUSES** switches the strips between the channels and the buses; the mains and the matrix are always on the right (LISTEN plays one).
-5. **Checks** lists trouble spots found from the settings (a gate that opens too fast, a compressor without make-up gain, a fader pushed up, a channel that goes nowhere). **Changes** lists everything you changed against the snapshot, in words, so you can make the same changes on the console (the trainer does not write snapshots). **Reset** goes back to the snapshot.
+5. **Checks** lists trouble spots found from the settings (a gate that opens too fast, a compressor without make-up gain, a fader pushed up, a channel that goes nowhere). **Changes** lists everything you changed against the snapshot, in words, so you can repeat them on the console, or save everything as a new snapshot file with **SAVE AS SNAPSHOT…** (see below). **Reset** goes back to the snapshot.
 
 ## What is simulated
 
