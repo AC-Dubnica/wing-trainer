@@ -623,6 +623,12 @@ function tick(): void {
 
 // --- start ---------------------------------------------------------------------------------------------------------------
 
+// The mouse wheel scrolls the strips sideways (a plain wheel only knows up and down).
+$('bank').addEventListener('wheel', (e) => {
+  const bank = $('bank')
+  if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && bank.scrollWidth > bank.clientWidth) { bank.scrollLeft += e.deltaY; e.preventDefault() }
+}, { passive: false })
+
 void (async () => {
   await useSnapshot(parseSnapshot(sampleJson), 'sample setup')
   requestAnimationFrame(tick)

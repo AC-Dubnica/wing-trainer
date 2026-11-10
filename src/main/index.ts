@@ -10,10 +10,10 @@ let win: BrowserWindow | null = null
 
 function createWindow(): void {
   win = new BrowserWindow({
-    width: 1500,
-    height: 900,
-    minWidth: 1100,
-    minHeight: 700,
+    width: Number(process.env.WING_TRAINER_SIZE?.split('x')[0]) || 1500,
+    height: Number(process.env.WING_TRAINER_SIZE?.split('x')[1]) || 900,
+    minWidth: process.env.WING_TRAINER_SIZE ? 400 : 1100,
+    minHeight: process.env.WING_TRAINER_SIZE ? 300 : 700,
     title: 'WING Trainer',
     backgroundColor: '#14161b',
     show: !process.env.WING_TRAINER_EVAL || !!process.env.WING_TRAINER_SHOT,
