@@ -95,6 +95,20 @@ function parseBus(id: number, b: Json): Bus {
 }
 
 /**
+ * A snapshot model saved by an older version of the app (the work state that is remembered between runs) lacks what later versions
+ * added: it is filled in with neutral values so that everything that reads the model can rely on it. Returns the same object.
+ */
+export function ensureModel(s: Snapshot): Snapshot {
+  s.inputs ??= []
+  s.outputs ??= []
+  s.matrices ??= []
+  for (const m of s.mains) m.matrix ??= []
+  for (const b of s.buses) { b.matrix ??= []; b.mains ??= [] }
+  for (const c of s.channels) { c.sends ??= []; c.mains ??= [] }
+  return s
+}
+
+/**
  * Reads a snapshot file saved by a Behringer WING (JSON). Anything missing falls back to a neutral value, so a snapshot from
  * another firmware still opens. Throws only when the file is not a snapshot at all.
  */

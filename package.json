@@ -9,7 +9,7 @@
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "npm run build && node scripts/e2e-engine.mjs && node scripts/e2e-session.mjs && node scripts/e2e-routing.mjs",
+    "e2e": "npm run build && node scripts/e2e-engine.mjs && node scripts/e2e-session.mjs && node scripts/e2e-routing.mjs && node scripts/e2e-oldstate.mjs",
     "package": "npm run build && electron-builder --publish never",
     "package:dir": "npm run build && electron-builder --dir --publish never"
   },

@@ -22,6 +22,10 @@ Dev hooks of the main process: `WING_TRAINER_EVAL="js"` runs JS in the page, pri
 
 `session.json` in the user data folder (`src/main/index.ts`, `src/shared/session.ts`): window bounds and maximized flag (the window opens maximized by default), the folder of each file dialog, the open snapshot's path, and the screen's `WorkState` (`app.ts`: the edited model, fader order, selection, tab, listen, recording folder), written 0.4 s after the last change through a temporary file. The hooks (`WING_TRAINER_EVAL`, `_SHOT`, `_SIZE`) neither read nor write it unless `WING_TRAINER_USER_DATA` points at a scratch folder (`scripts/e2e-session.mjs` does).
 
+## Remembered work and new model fields
+
+The remembered work state contains the edited snapshot model, which an older version of the app wrote. **Whenever a field is added to the model (`src/shared/model.ts`), add its default to `ensureModel` in `src/shared/snapshot.ts`**, or a user who updates the app finds everything that reads the new field broken until the saved state is deleted (that is how adding a matrix and connecting in the Routing tab stopped working once). `scripts/e2e-oldstate.mjs` runs the app on a saved state that lacks the newest fields. If the saved work cannot be restored at all the app opens the snapshot as it is and says so.
+
 ## Architecture
 
 - `src/shared`: model and pure logic. `snapshot.ts` (tolerant reader of the console's JSON; unknown or missing fields get neutral values), `convert.ts` (console value -> audio parameter), `checks.ts`, `diff.ts`, `multitrack.ts` (recorder track n -> input via `io.out.USB` -> channels patched to that input).

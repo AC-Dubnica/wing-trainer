@@ -9,7 +9,7 @@ import { addBus, addMatrix, freeBusId, freeMatrixId, NAME_LENGTH, removeBus, rem
 import type { Channel, Snapshot } from '../shared/model'
 import { INPUT_GROUPS, INPUT_PORTS, MAX_BUSES, MAX_CHANNELS, MAX_MATRICES, OFF_DB } from '../shared/model'
 import { mapTracks } from '../shared/multitrack'
-import { parseSnapshot } from '../shared/snapshot'
+import { ensureModel, parseSnapshot } from '../shared/snapshot'
 import { dbAt, FADER_MAX, FADER_MIN, posOf } from '../shared/fader'
 import { Engine, testSignal, type Listen } from './engine'
 import { createRouting } from './routing'
@@ -232,7 +232,7 @@ async function restoreState(raw: unknown): Promise<void> {
   if (!s || s.v !== 1 || s.path !== snapshotPath || !s.cur || !Array.isArray(s.cur.channels) || !Array.isArray(s.cur.buses) || !Array.isArray(s.cur.mains) || !Array.isArray(s.cur.matrices) || !Array.isArray(s.cur.outputs) || !Array.isArray(s.cur.inputs)) return
   const known = new Set(base.channels.map((c) => c.id))
   if (s.cur.channels.some((c) => !known.has(c.id) && !c.copyOf)) return // it was made from another version of this file
-  cur = s.cur
+  cur = ensureModel(s.cur)
   const ids = new Set(cur.channels.map((c) => c.id))
   order = [...(Array.isArray(s.order) ? s.order : []).filter((id) => ids.has(id)), ...cur.channels.map((c) => c.id).filter((id) => !(s.order ?? []).includes(id))]
   selected = ids.has(s.selected ?? -1) ? (s.selected as number) : cur.channels[0]?.id ?? 0
@@ -949,7 +949,19 @@ void (async () => {
     }
   }
   await useSnapshot(snap, name, path, file)
-  await restoreState(last.state)
+  try {
+    await restoreState(last.state)
+  } catch (e) {
+    // What was remembered does not fit this version: start from the snapshot as it is, and say so.
+    console.error('restoring the saved work failed', e)
+    cur = structuredClone(snap)
+    order = cur.channels.map((c) => c.id)
+    view = 'console'
+    selectedOut = ''
+    buildStrips(); buildTop(); buildDetail(); routing.render()
+    await rebuildEngine()
+    status('The work saved last time could not be brought back (it was made by another version): the snapshot opened as it is.')
+  }
   requestAnimationFrame(tick)
 })()
 
