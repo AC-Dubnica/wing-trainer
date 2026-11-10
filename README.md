@@ -6,6 +6,10 @@ A practice console for a **Behringer WING** setup. Open a snapshot saved from th
 
 It is made for **testing the Sunday setup** before Sunday, and for practising without touching the console. It is a simulator, not the WING's own software, and its sound is close to the console's but not identical (see *What is simulated*).
 
+## Documentation
+
+The [`docs/`](docs/README.md) folder has a [user guide](docs/user-guide.md) (every control, the recording names, the Routing tab, checks and changes) and a description of [what is inside](docs/whats-inside.md) (the files, the audio graph, how a snapshot and a recording are read, the tests and releases).
+
 ## Run it
 
 ```bash
