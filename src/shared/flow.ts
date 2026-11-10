@@ -1,3 +1,4 @@
+import { mainOfIndex, mainSourceName } from './mains'
 import { OFF_DB, type Snapshot } from './model'
 
 export type NodeKind = 'in' | 'ch' | 'bus' | 'main' | 'matrix' | 'out'
@@ -81,13 +82,21 @@ export function buildFlow(s: Snapshot): { nodes: FlowNode[]; edges: FlowEdge[] }
     const label = `${o.grp} ${o.port}`
     const src = o.source
     let from: string | null = null
-    if (src.grp === 'MAIN') from = `main:${src.in}`
+    let said = `${src.grp} ${src.in}`
+    let side = ''
+    if (src.grp === 'MAIN') {
+      // The MAIN group lists the left and the right of each main: 1 is main 1 left, 2 is main 1 right, 3 is main 2 left ...
+      const m = mainOfIndex(s, src.in)
+      from = m ? `main:${m.main}` : null
+      said = mainSourceName(s, src.in)
+      side = m?.side === 'L' ? 'L' : m?.side === 'R' ? 'R' : ''
+    }
     else if (src.grp === 'MTX') from = `matrix:${src.in}`
     else if (src.grp === 'BUS') from = `bus:${src.in}`
     else if (src.grp !== 'MON') from = inputNode(src.grp, src.in) // an input passed straight through (the USB and card recorders)
     if (from && !nodes.has(from)) continue // patched to something the snapshot does not name
-    add({ id, kind: 'out', label, sub: src.grp === 'MON' ? 'monitor' : `${src.grp} ${src.in}`, color: 0, muted: false })
-    if (from) edges.push({ from, to: id, kind: 'patch', label: '', muted: false })
+    add({ id, kind: 'out', label, sub: src.grp === 'MON' ? 'monitor' : said, color: 0, muted: false })
+    if (from) edges.push({ from, to: id, kind: 'patch', label: side, muted: false })
   }
 
   return { nodes: [...nodes.values()], edges }

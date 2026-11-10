@@ -12,7 +12,7 @@ describe('diffSnapshots of the routing', () => {
     now.outputs.push({ grp: 'AUX', port: 5, source: { grp: 'BUS', in: 4 } })
     const changes = diffSnapshots(base, now).map(describeChange)
     expect(changes).toContain('Ch 13 SINGER 1: Input C 2 -> C 5')
-    expect(changes).toContain('Output C 7: Source MAIN 1 -> MAIN 2')
+    expect(changes).toContain('Output C 7: Source MAIN 1 (PA left) -> MAIN 2 (PA right)')
     expect(changes).toContain('Output AUX 5: Source off -> BUS 4')
   })
 })

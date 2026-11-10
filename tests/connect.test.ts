@@ -50,8 +50,8 @@ describe('connect', () => {
 
   it('patches an output to a mix or an input, replacing what it carried', () => {
     const s = fresh()
-    expect(connect(s, 'main:2', 'out:C:7').ok).toBe(true)
-    expect(s.outputs.find((o) => o.grp === 'C' && o.port === 7)!.source).toEqual({ grp: 'MAIN', in: 2 })
+    expect(connect(s, 'main:2', 'out:C:7').ok).toBe(true) // C 7 is an odd port: SUB's left side
+    expect(s.outputs.find((o) => o.grp === 'C' && o.port === 7)!.source).toEqual({ grp: 'MAIN', in: 3 })
     expect(connect(s, 'in:C:5', 'out:AUX:5').ok).toBe(true)
     expect(s.outputs.find((o) => o.grp === 'AUX' && o.port === 5)!.source).toEqual({ grp: 'C', in: 5 })
   })

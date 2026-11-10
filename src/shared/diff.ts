@@ -1,3 +1,4 @@
+import { mainSourceName } from './mains'
 import { OFF_DB, type Bus, type Channel, type Main, type Matrix, type Snapshot } from './model'
 
 export interface Change {
@@ -71,7 +72,11 @@ export function diffSnapshots(base: Snapshot, now: Snapshot): Change[] {
     if (was) out.push(...compare(`Main ${m.id} ${m.name}`, mainValues(was), mainValues(m)))
   }
   // Output patching: every output that is patched in either snapshot.
-  const patchOf = (s: Snapshot, grp: string, port: number): string => { const o = s.outputs.find((x) => x.grp === grp && x.port === port); return o ? `${o.source.grp} ${o.source.in}` : 'off' }
+  const patchOf = (s: Snapshot, grp: string, port: number): string => {
+    const o = s.outputs.find((x) => x.grp === grp && x.port === port)
+    if (!o) return 'off'
+    return o.source.grp === 'MAIN' ? `${o.source.grp} ${o.source.in} (${mainSourceName(s, o.source.in)})` : `${o.source.grp} ${o.source.in}`
+  }
   const outputs = new Set([...base.outputs, ...now.outputs].map((o) => `${o.grp}:${o.port}`))
   for (const key of outputs) {
     const [grp, port] = key.split(':')

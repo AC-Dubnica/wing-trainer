@@ -79,6 +79,14 @@ A channel can listen to a **stereo pair** of input ports instead of one mono por
 
 Not simulated: the stereo **width** of a channel (it is read but not applied).
 
+## Mains are stereo: the PA is C 7 and C 8
+
+A main is a **stereo pair**, a left and a right. In the output patch the source group **MAIN** therefore lists the sides, not the mains: `MAIN 1` is the **left** of main 1, `MAIN 2` its **right**, `MAIN 3` the left of main 2, `MAIN 4` its right, and so on. In the sample, `C 7 <- MAIN 1` and `C 8 <- MAIN 2` are the **left and right of the PA** (main 1), and `C 5` and `C 6` are the left and right of **SUB** (main 2). The recorder tracks `REC 1` and `REC 2` are the PA's left and right too.
+
+The trainer shows it that way: in the Routing tab the PA has a line to `C 7` (marked **L**) and one to `C 8` (marked **R**), the output nodes say `PA left` and `PA right`, the Outputs table writes `PA left` beside a MAIN source, and Changes says `MAIN 1 (PA left)`. (The WING Quick Start Guide describes it as selecting MAIN and assigning `1L` to output 7 and `1R` to output 8.)
+
+**Connecting a main to an output** with ⌘-click patches the **left side to an odd port** and the **right side to an even port** (C 7 gets the PA's left, C 8 its right); connect the PA to the other port as well to get both sides. A mono main is one entry. The sound is not affected (outputs are not simulated, mains are heard as a stereo pair).
+
 ## Buses and matrices: add, rename, remove
 
 Press **BUSES** (next to CHANNELS) to see the buses. The console has 16 buses and 8 matrices; the sample uses 13 and 1.

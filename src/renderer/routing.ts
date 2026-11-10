@@ -1,4 +1,5 @@
 import { replacement, toggleConnection } from '../shared/connect'
+import { mainSourceCount, mainSourceName } from '../shared/mains'
 import { buildFlow, trace, type FlowEdge, type FlowNode } from '../shared/flow'
 import { setSource } from '../shared/snapshot'
 import { INPUT_GROUPS, INPUT_PORTS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
@@ -181,7 +182,7 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     return n
   }
   const inputMax = (grp: string): number => INPUT_PORTS[grp] ?? 48
-  const sourceMax = (grp: string): number => (grp === 'MAIN' ? 4 : grp === 'MTX' ? 8 : grp === 'BUS' ? 25 : grp === 'MON' ? 2 : inputMax(grp))
+  const sourceMax = (grp: string): number => (grp === 'MAIN' ? mainSourceCount(deps.snap()) : grp === 'MTX' ? 8 : grp === 'BUS' ? 25 : grp === 'MON' ? 2 : inputMax(grp))
 
   function fadersTable(): HTMLElement {
     const snap = deps.snap()
@@ -211,7 +212,7 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
       const set = (grp: string, n: number): void => { o.source = { grp, in: n }; changed() }
       const remove = el<HTMLButtonElement>('button', { class: 'mini', textContent: '×', title: 'Unpatch this output', onclick: () => { snap.outputs.splice(snap.outputs.indexOf(o), 1); changed() } })
       return el('tr', {}, el('td', { textContent: `${o.grp} ${o.port}` }),
-        el('td', {}, select(OUTPUT_SOURCES.filter((g) => g !== 'OFF'), o.source.grp, `Source group of output ${o.grp} ${o.port}`, (v) => set(v, Math.min(o.source.in, sourceMax(v)))), ' ', numberBox(o.source.in, sourceMax(o.source.grp), `Source number of output ${o.grp} ${o.port}`, (v) => set(o.source.grp, v))),
+        el('td', {}, select(OUTPUT_SOURCES.filter((g) => g !== 'OFF'), o.source.grp, `Source group of output ${o.grp} ${o.port}`, (v) => set(v, Math.min(o.source.in, sourceMax(v)))), ' ', numberBox(o.source.in, sourceMax(o.source.grp), `Source number of output ${o.grp} ${o.port}`, (v) => set(o.source.grp, v)), ...(o.source.grp === 'MAIN' ? [el('span', { class: 'dim', textContent: ` ${mainSourceName(snap, o.source.in)}` })] : [])),
         el('td', {}, remove))
     })
     // A new patch

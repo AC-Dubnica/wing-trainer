@@ -115,6 +115,7 @@ export function setSource(s: Pick<Snapshot, 'inputs'>, c: { source: Source; hasS
 
 export function ensureModel(s: Snapshot): Snapshot {
   s.inputs ??= []
+  s.mainMono ??= [false, false, false, false]
   s.outputs ??= []
   s.matrices ??= []
   for (const m of s.mains) m.matrix ??= []
@@ -142,7 +143,8 @@ export function parseSnapshot(raw: unknown): Snapshot {
     numbered(ports).map(([port, p]): InputPort => ({ grp, port, name: str(p.name), gain: num(p.g, 0), phantom: bool(p.vph), mode: str(p.mode, 'M') })).filter((x) => x.name !== ''))
   const outputs: OutputPatch[] = Object.entries(obj(io.out)).flatMap(([grp, ports]) =>
     numbered(ports).map(([port, x]): OutputPatch => ({ grp, port, source: { grp: str(x.grp, 'OFF'), in: num(x.in, 1) } })).filter((x) => x.source.grp !== 'OFF' && x.source.grp !== ''))
-  const snap: Snapshot = { created: str(root.created), firmware: str(root.creator_fw), channels, buses, mains, matrices, inputs, outputs }
+  const mainMono = [1, 2, 3, 4].map((i) => bool(obj(obj(ae.main)[String(i)]).busmono))
+  const snap: Snapshot = { created: str(root.created), firmware: str(root.creator_fw), channels, buses, mains, matrices, mainMono, inputs, outputs }
   for (const c of snap.channels) c.stereo = stereoOf(snap, c.hasSource ? c.source : null)
   return snap
 }

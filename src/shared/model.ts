@@ -126,6 +126,8 @@ export interface Snapshot {
   buses: Bus[]
   mains: Main[]
   matrices: Matrix[]
+  /** For each of the four mains (index 0 = main 1): whether it is mono. A stereo main is two signals in the output patch, a left and a right. */
+  mainMono: boolean[]
   /** Input ports that have a name in the snapshot. */
   inputs: InputPort[]
   /** The patched outputs (those set to OFF are left out). */

@@ -1,4 +1,5 @@
 import { buildFlow } from './flow'
+import { mainOfIndex, mainSides, mainSourceName } from './mains'
 import { OFF_DB, type Snapshot } from './model'
 import { setSource } from './snapshot'
 
@@ -103,12 +104,13 @@ export function connect(s: Snapshot, aId: string, bId: string): ConnectResult {
     return { ok: true, message: `${f} now sends to ${t}.` }
   }
   if (to.kind === 'out' && (from.kind === 'main' || from.kind === 'matrix' || from.kind === 'bus' || from.kind === 'in')) {
-    const source = from.kind === 'in' ? { grp: from.grp, in: from.port } : { grp: mixGroup(from), in: from.id }
+    // A main is a left and a right: an odd output port gets its left side and an even port its right side (connect it again to another port for the other side).
+    const source = from.kind === 'in' ? { grp: from.grp, in: from.port } : from.kind === 'main' ? { grp: 'MAIN', in: mainIndexFor(s, from.id, to.port) } : { grp: mixGroup(from), in: from.id }
     const o = s.outputs.find((x) => x.grp === to.grp && x.port === to.port)
-    if (o && o.source.grp === source.grp && o.source.in === source.in) return { ok: false, message: `${t} already carries ${f}.` }
+    if (o && (from.kind === 'main' ? isMainSource(s, o.source, from.id) : o.source.grp === source.grp && o.source.in === source.in)) return { ok: false, message: `${t} already carries ${describeSource(s, o.source)}.` }
     if (o) o.source = source
     else s.outputs.push({ grp: to.grp, port: to.port, source })
-    return { ok: true, message: `${t} now carries ${f}.` }
+    return { ok: true, message: `${t} now carries ${describeSource(s, source)}.` }
   }
   return { ok: false, message: `${f} cannot feed ${t} directly. A channel reaches an output through a main, a bus or a matrix.` }
 }
@@ -151,7 +153,7 @@ export function disconnect(s: Snapshot, aId: string, bId: string): ConnectResult
   }
   if (to.kind === 'out') {
     const source = from.kind === 'in' ? { grp: from.grp, in: from.port } : { grp: mixGroup(from), in: (from as { id: number }).id }
-    const i = s.outputs.findIndex((x) => x.grp === to.grp && x.port === to.port && x.source.grp === source.grp && x.source.in === source.in)
+    const i = s.outputs.findIndex((x) => x.grp === to.grp && x.port === to.port && (from.kind === 'main' ? isMainSource(s, x.source, from.id) : x.source.grp === source.grp && x.source.in === source.in))
     if (i < 0) return not
     s.outputs.splice(i, 1)
     return { ok: true, message: `${t} no longer carries ${f}: it is not patched now.` }
@@ -160,12 +162,30 @@ export function disconnect(s: Snapshot, aId: string, bId: string): ConnectResult
 }
 
 /** The ref of what an output (or anything) is patched to, from a source such as `{ grp: 'BUS', in: 8 }`. */
-function sourceRef(src: { grp: string; in: number }): Ref {
-  if (src.grp === 'MAIN') return { kind: 'main', id: src.in }
+function sourceRef(s: Snapshot, src: { grp: string; in: number }): Ref {
+  // The MAIN group lists the left and right of each main (see mains.ts), so its index is not the main's number.
+  if (src.grp === 'MAIN') return { kind: 'main', id: mainOfIndex(s, src.in)?.main ?? src.in }
   if (src.grp === 'MTX') return { kind: 'matrix', id: src.in }
   if (src.grp === 'BUS') return { kind: 'bus', id: src.in }
   return { kind: 'in', grp: src.grp, port: src.in }
 }
+
+/** What an output's source is, in words: "main PA (left)", "bus STREAM 2", "input C 5". */
+function describeSource(s: Snapshot, src: { grp: string; in: number }): string {
+  if (src.grp === 'MAIN') return `main ${mainSourceName(s, src.in)}`
+  const ref = sourceRef(s, src)
+  return `${ref.kind === 'in' ? 'input' : ref.kind} ${nameOf(s, ref).replace(/^(.+) \(.*\)$/, '$1')}`
+}
+
+/** The entry of the MAIN source group to patch to an output port: an odd port takes the left side and an even port the right side (as in a stereo pair of outputs). */
+function mainIndexFor(s: Snapshot, main: number, port: number): number {
+  const sides = mainSides(s).filter((x) => x.main === main)
+  if (sides.length === 1) return sides[0].index // a mono main
+  return (sides.find((x) => x.side === (port % 2 === 1 ? 'L' : 'R')) ?? sides[0])?.index ?? main
+}
+
+/** Whether an output source is this main (either of its sides). */
+const isMainSource = (s: Snapshot, src: { grp: string; in: number }, main: number): boolean => src.grp === 'MAIN' && mainOfIndex(s, src.in)?.main === main
 
 /**
  * What connecting the two would take away, in words, or null when it only adds: an output that carries something else loses that,
@@ -180,9 +200,8 @@ export function replacement(s: Snapshot, aId: string, bId: string): string | nul
   if (to.kind === 'out' && from.kind !== 'ch') {
     const o = s.outputs.find((x) => x.grp === to.grp && x.port === to.port)
     if (!o) return null
-    const was = nameOf(s, sourceRef(o.source))
-    const kind = o.source.grp === 'MAIN' ? 'main' : o.source.grp === 'MTX' ? 'matrix' : o.source.grp === 'BUS' ? 'bus' : 'input'
-    return `${nameOf(s, to)} carries ${kind} ${was} now. Connecting ${nameOf(s, from)} replaces it: ${was} will no longer go to ${nameOf(s, to)}.`
+    const was = describeSource(s, o.source)
+    return `${nameOf(s, to)} carries ${was} now. Connecting ${nameOf(s, from)} replaces it: ${was} will no longer go to ${nameOf(s, to)}.`
   }
   if (from.kind === 'in' && to.kind === 'ch') {
     const c = s.channels.find((x) => x.id === to.id)
