@@ -166,6 +166,11 @@ export function exportSnapshot(raw: unknown, base: Snapshot, cur: Snapshot): Exp
     set(['main', b.id, 'name'], a.name, b.name)
     set(['main', b.id, 'mute'], a.mute, b.mute)
     set(['main', b.id, 'fdr'], a.fader, b.fader)
+    for (const x of b.matrix) {
+      const was = a.matrix.find((y) => y.mtx === x.mtx)
+      set(['main', b.id, 'send', `MX${x.mtx}`, 'on'], was?.on, x.on, !was)
+      set(['main', b.id, 'send', `MX${x.mtx}`, 'lvl'], was?.level, x.level, !was)
+    }
   }
   for (const m of cur.mains) { const was = base.mains.find((x) => x.id === m.id); if (was) mainFields(was, m) }
 

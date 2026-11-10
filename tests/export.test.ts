@@ -176,6 +176,14 @@ describe('exportSnapshot of copies, buses and matrices', () => {
     expect(m.id).toBe(2)
   })
 
+  it('writes a main that feeds a matrix', () => {
+    const { base, cur } = load()
+    cur.mains.find((m) => m.id === 2)!.matrix.push({ mtx: 1, on: true, level: -3 })
+    const json = exportSnapshot(raw(), base, cur).json
+    expect(ae(json).main['2'].send.MX1).toMatchObject({ on: true, lvl: -3 })
+    expect(parseSnapshot(json).mains.find((m) => m.id === 2)!.matrix[0]).toMatchObject({ mtx: 1, on: true, level: -3 })
+  })
+
   it('refuses a file that is not a snapshot', () => {
     const { base, cur } = load()
     expect(() => exportSnapshot({ hello: 1 }, base, cur)).toThrow(/not a WING snapshot/)

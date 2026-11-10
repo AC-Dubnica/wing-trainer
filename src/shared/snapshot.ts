@@ -105,7 +105,7 @@ export function parseSnapshot(raw: unknown): Snapshot {
   // A channel that has neither a name nor an input is an unused strip.
   const channels = numbered(ae.ch).map(([id, c]) => parseChannel(id, c)).filter((c) => c.name !== '' || c.hasSource)
   const buses = numbered(ae.bus).map(([id, b]) => parseBus(id, b)).filter((b) => b.name !== '')
-  const mains: Main[] = numbered(ae.main).map(([id, m]) => ({ id, name: str(m.name) || `MAIN ${id}`, mute: bool(m.mute), fader: num(m.fdr, 0) })).filter((m) => m.id <= 2 || m.name !== `MAIN ${m.id}`)
+  const mains: Main[] = numbered(ae.main).map(([id, m]) => ({ id, name: str(m.name) || `MAIN ${id}`, mute: bool(m.mute), fader: num(m.fdr, 0), matrix: matrixSends(m.send) })).filter((m) => m.id <= 2 || m.name !== `MAIN ${m.id}`)
   const matrices: Matrix[] = numbered(ae.mtx).map(([id, m]) => ({ id, name: str(m.name), mute: bool(m.mute), fader: num(m.fdr, 0) })).filter((m) => m.name !== '')
   const io = obj(ae.io)
   const inputs: InputPort[] = Object.entries(obj(io.in)).flatMap(([grp, ports]) =>

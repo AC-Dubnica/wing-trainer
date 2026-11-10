@@ -63,6 +63,10 @@ export function buildFlow(s: Snapshot): { nodes: FlowNode[]; edges: FlowEdge[] }
     for (const x of b.matrix) if (x.on && x.level > OFF_DB && nodes.has(`matrix:${x.mtx}`)) edges.push({ from: `bus:${b.id}`, to: `matrix:${x.mtx}`, kind: 'matrix', label: dbLabel(x.level), muted: b.mute })
   }
 
+  for (const m of s.mains) {
+    for (const x of m.matrix) if (x.on && x.level > OFF_DB && nodes.has(`matrix:${x.mtx}`)) edges.push({ from: `main:${m.id}`, to: `matrix:${x.mtx}`, kind: 'matrix', label: dbLabel(x.level), muted: m.mute })
+  }
+
   for (const o of s.outputs) {
     const id = outId(o.grp, o.port)
     const label = `${o.grp} ${o.port}`

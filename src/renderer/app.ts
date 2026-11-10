@@ -636,9 +636,13 @@ function busDetail(f: { kind: string; id: number }): HTMLElement[] {
   if (f.kind === 'matrix') {
     const m = cur.matrices.find((x) => x.id === f.id)
     if (!m) return []
-    return [section(`MATRIX ${m.id} ${m.name}`, mixHead('matrix', m.id, m.name), el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output. Buses send to it: see each bus.' }))]
+    return [section(`MATRIX ${m.id} ${m.name}`, mixHead('matrix', m.id, m.name), el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output. Buses and mains send to it: see each bus and main.' }))]
   }
-  return [section('MAIN', el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output.' }))]
+  const main = cur.mains.find((x) => x.id === f.id)
+  if (!main) return []
+  return [section(`MAIN ${main.id} ${main.name}`,
+    el('div', { class: 'sends' }, ...main.matrix.map((x) => { const mtx = cur.matrices.find((y) => y.id === x.mtx); return mtx ? el('div', { class: 'send' }, knob({ label: `To ${mtx.name}`, min: -60, max: 10, step: 0.5, get: () => (x.level <= OFF_DB ? -60 : x.level), set: (v) => { x.level = v <= -59.9 ? -144 : v }, fmt: (v) => (v <= -59.9 ? '-∞' : db1(v)), disabled: () => !x.on }), button('ON', () => x.on, (v) => { x.on = v })) : el('span') })),
+    el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output. A main can feed a matrix: switch on its send above, or ⌘-click the main and the matrix in the Routing tab.' }))]
 }
 
 function refreshDetailValues(): void { redraw.forEach((r) => r()) }

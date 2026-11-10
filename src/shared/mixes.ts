@@ -26,12 +26,17 @@ function silenceSends(s: Snapshot, bus: number): void {
   }
 }
 
-/** A bus's send to a matrix, off (the entry is made if the bus has none). */
+/** A bus's or a main's send to a matrix, off (the entry is made if it has none). */
 function silenceMatrixSend(s: Snapshot, mtx: number): void {
   for (const b of s.buses) {
     const x = b.matrix.find((m) => m.mtx === mtx)
     if (x) Object.assign(x, { on: false, level: -144 })
     else { b.matrix.push({ mtx, on: false, level: -144 }); b.matrix.sort((p, q) => p.mtx - q.mtx) }
+  }
+  for (const m of s.mains) {
+    const x = m.matrix.find((y) => y.mtx === mtx)
+    if (x) Object.assign(x, { on: false, level: -144 })
+    else { m.matrix.push({ mtx, on: false, level: -144 }); m.matrix.sort((p, q) => p.mtx - q.mtx) }
   }
 }
 

@@ -60,6 +60,8 @@ const scenario = `(async () => {
   r.preSendMutedFader = await render((s) => { toBus(0, true, true)(s); busFaderZero(s); s.channels.find((c) => c.id === 13).fader = -144 }, { listen: { kind: 'bus', id: streamId } })
   // Solo: channel 14 plays on the main; soloing channel 13 (muted on the main) is still heard
   r.soloHeard = await render((s) => { alone(14)(s); alone(13, (c) => { c.mute = false })(s); s.channels.find((x) => x.id === 14).fader = -144 }, { solo: [13] })
+  // A main feeding a matrix: the channel is only on main 1, and main 1 sends to matrix 1
+  r.mainMatrix = await render((s) => { alone(13)(s); s.matrices.forEach((m) => { m.mute = false; m.fader = 0 }); const main = s.mains.find((m) => m.id === 1); main.matrix = [{ mtx: 1, on: true, level: 0 }]; s.buses.forEach((b) => { b.matrix.forEach((x) => { x.on = false }) }) }, { listen: { kind: 'matrix', id: 1 } })
   // Matrix: STREAM bus -> matrix 1 ("HALL SPEAKERS")
   r.matrix = await render((s) => { toBus(0)(s); busFaderZero(s); s.matrices.forEach((m) => { m.mute = false; m.fader = 0 }); s.buses.find((b) => b.id === streamId).matrix.forEach((m) => { m.on = true; m.level = 0 }) }, { listen: { kind: 'matrix', id: 1 } })
   return r
@@ -90,6 +92,7 @@ const checks = [
   ['a send that is off is silent', r.busOffSend < -100, f(r.busOffSend)],
   ['a pre-fader send is not affected by the channel fader', r.preSendMutedFader > -50, f(r.preSendMutedFader)],
   ['solo plays the soloed channel whatever the mix does', r.soloHeard > -50, f(r.soloHeard)],
+  ['a matrix fed by a main carries what the main carries', r.mainMatrix > -50, f(r.mainMatrix)],
   ['the matrix carries what the bus carries', r.matrix > -50, f(r.matrix)],
 ]
 let failed = 0

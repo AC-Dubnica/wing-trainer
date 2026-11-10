@@ -46,6 +46,7 @@ export class Engine {
   private buses = new Map<number, Out & { mains: Map<number, GainNode>; matrix: Map<number, GainNode> }>()
   private mains = new Map<number, Out>()
   private matrices = new Map<number, Out>()
+  private mainMatrix = new Map<number, Map<number, GainNode>>()
   private soloBus: GainNode
   private monitor: GainNode
   private listening: Listen = { kind: 'main', id: 1 }
@@ -79,6 +80,11 @@ export class Engine {
     }
     for (const m of snapshot.mains) this.mains.set(m.id, out())
     for (const m of snapshot.matrices) this.matrices.set(m.id, out())
+    for (const m of snapshot.mains) {
+      const sends = new Map<number, GainNode>()
+      for (const x of m.matrix) { const mtx = this.matrices.get(x.mtx); if (!mtx) continue; const g = ctx.createGain(); this.mains.get(m.id)!.meter.connect(g); g.connect(mtx.input); sends.set(x.mtx, g) }
+      this.mainMatrix.set(m.id, sends)
+    }
     for (const b of snapshot.buses) {
       const o = out()
       const mains = new Map<number, GainNode>()
@@ -159,7 +165,11 @@ export class Engine {
       for (const m of b.mains) { const g = o.mains.get(m.main); if (g) set(g.gain, m.on ? dbToGain(m.level) : 0) }
       for (const x of b.matrix) { const g = o.matrix.get(x.mtx); if (g) set(g.gain, x.on ? dbToGain(x.level) : 0) }
     }
-    for (const m of s.mains) { const o = this.mains.get(m.id); if (o) set(o.fader.gain, m.mute ? 0 : dbToGain(m.fader)) }
+    for (const m of s.mains) {
+      const o = this.mains.get(m.id)
+      if (o) set(o.fader.gain, m.mute ? 0 : dbToGain(m.fader))
+      for (const x of m.matrix) { const g = this.mainMatrix.get(m.id)?.get(x.mtx); if (g) set(g.gain, x.on ? dbToGain(x.level) : 0) }
+    }
     for (const m of s.matrices) { const o = this.matrices.get(m.id); if (o) set(o.fader.gain, m.mute ? 0 : dbToGain(m.fader)) }
   }
 
@@ -242,6 +252,7 @@ export class Engine {
     this.strips.clear()
     this.buses.clear()
     this.mains.clear()
+    this.mainMatrix.clear()
     this.matrices.clear()
   }
 }

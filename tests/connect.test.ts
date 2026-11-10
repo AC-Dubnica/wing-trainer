@@ -60,7 +60,7 @@ describe('connect', () => {
     const s = fresh()
     expect(connect(s, 'ch:13', 'ch:14')).toMatchObject({ ok: false })
     expect(connect(s, 'ch:13', 'out:C:7').message).toMatch(/main, a bus or a matrix/)
-    expect(connect(s, 'main:1', 'matrix:1').ok).toBe(false)
+    expect(connect(s, 'main:1', 'main:2').ok).toBe(false)
     expect(connect(s, 'ch:99', 'main:1').ok).toBe(false)
   })
 })
@@ -124,5 +124,17 @@ describe('toggleConnection', () => {
     const full = s.buses.find((b) => b.name === 'FULL MIX')!.id
     expect(isConnected(s, 'ch:13', `bus:${full}`)).toBe(false)
     expect(toggleConnection(s, 'ch:13', `bus:${full}`)).toMatchObject({ ok: true, added: true })
+  })
+})
+
+describe('a main feeds a matrix', () => {
+  it('connects in either order and shows in the flow', () => {
+    const s = fresh()
+    expect(connect(s, 'matrix:1', 'main:1')).toMatchObject({ ok: true }) // the matrix named first
+    expect(s.mains.find((m) => m.id === 1)!.matrix.find((x) => x.mtx === 1)).toMatchObject({ on: true, level: 0 })
+    expect(has(s, 'main:1', 'matrix:1')).toBe(true)
+    expect(isConnected(s, 'main:1', 'matrix:1')).toBe(true)
+    expect(toggleConnection(s, 'main:1', 'matrix:1')).toMatchObject({ ok: true, added: false })
+    expect(has(s, 'main:1', 'matrix:1')).toBe(false)
   })
 })

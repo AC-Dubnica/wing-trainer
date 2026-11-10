@@ -83,7 +83,8 @@ export interface Bus {
   matrix: MatrixSend[]
 }
 
-export interface Main { id: number; name: string; mute: boolean; fader: number }
+/** A main can feed matrices, like a bus. */
+export interface Main { id: number; name: string; mute: boolean; fader: number; matrix: MatrixSend[] }
 export interface Matrix { id: number; name: string; mute: boolean; fader: number }
 
 /** One recorder track: which console input the USB (or card) recorder takes as its track number `track`. */

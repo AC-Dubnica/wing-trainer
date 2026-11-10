@@ -35,7 +35,7 @@ function channelValues(c: Channel): Values {
 }
 
 const busValues = (b: Bus): Values => ({ Name: b.name, Fader: db(b.fader), Mute: onoff(b.mute), ...Object.fromEntries(b.mains.map((m) => [`To main ${m.main}`, `${onoff(m.on)} ${db(m.level)}`])) })
-const mainValues = (m: Main): Values => ({ Fader: db(m.fader), Mute: onoff(m.mute) })
+const mainValues = (m: Main): Values => ({ Fader: db(m.fader), Mute: onoff(m.mute), ...Object.fromEntries(m.matrix.map((x) => [`To matrix ${x.mtx}`, `${onoff(x.on)} ${db(x.level)}`])) })
 const matrixValues = (m: Matrix): Values => ({ Name: m.name, Fader: db(m.fader), Mute: onoff(m.mute) })
 
 function compare(where: string, a: Values, b: Values): Change[] {

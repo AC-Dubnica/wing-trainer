@@ -48,7 +48,7 @@ The snapshot says which input each recorder track took, and which channels liste
 - **Fader:** drag it. Its travel spends more of its length near 0 dB, like the console's. All the way down is off (-∞).
 - **SOLO** plays that channel alone, whatever LISTEN says. **MUTE** silences it.
 - Click a strip to select it; the panel below shows its settings.
-- **Mains and matrix** (PA, SUB, HALL SPEAKERS in the sample) are always on the right. **LISTEN** on one plays it.
+- **Mains and matrix** (PA, SUB, HALL SPEAKERS in the sample) are always on the right. **LISTEN** on one plays it. A **main** is not a bus: PA and SUB are the console's mains (up to four). A **matrix** is an extra output mix fed by buses and mains: select the main or bus to switch on its send to the matrix, or ⌘-click the two in the Routing tab.
 - **BUSES** shows the buses on the left instead of the channels: fader, mute and LISTEN, so you can hear a monitor mix.
 - The mouse wheel scrolls the strips sideways when there are more than fit.
 
@@ -104,11 +104,11 @@ While you hold the key the cursor becomes a crosshair, and the line at the botto
 | a channel | a main | the channel is assigned to the main |
 | a channel | a bus | the channel sends to the bus (at 0 dB, turn it down with its knob in the channel's Sends) |
 | a bus | a main | the bus is assigned to the main |
-| a bus | a matrix | the bus sends to the matrix |
+| a bus **or a main** | a matrix | the bus (or main) sends to the matrix |
 | a main, bus or matrix | an output port | the output carries it (replacing what it carried) |
 | an input port | an output port | the input is passed straight to the output (the recorder tracks) |
 
-A send that is all the way down counts as not connected, so ⌘-click turns it on. Things of the same kind (two channels) and mains feeding matrices are refused with a message. Every input port that has a name in the snapshot is in the diagram, used or not, so a channel can be connected to it. To patch an output port that is not shown (nothing is patched to it), use **PATCH** in the Outputs table.
+A send that is all the way down counts as not connected, so ⌘-click turns it on. Things of the same kind (two channels) are refused with a message. Every input port that has a name in the snapshot is in the diagram, used or not, so a channel can be connected to it. To patch an output port that is not shown (nothing is patched to it), use **PATCH** in the Outputs table.
 
 **Remap, without a console.** The two tables on the right change the routing in the app:
 

@@ -32,6 +32,9 @@ function nameOf(s: Snapshot, r: Ref): string {
 
 /** The two refs in signal order (the one that feeds first), or null when the pair is the same kind. */
 function ordered(a: Ref, b: Ref): [Ref, Ref] | null {
+  // A main feeds a matrix (they share a rank in the diagram's columns, but the signal goes from the main).
+  if (a.kind === 'main' && b.kind === 'matrix') return [a, b]
+  if (a.kind === 'matrix' && b.kind === 'main') return [b, a]
   if (RANK[a.kind] === RANK[b.kind]) return null
   return RANK[a.kind] < RANK[b.kind] ? [a, b] : [b, a]
 }
@@ -89,12 +92,12 @@ export function connect(s: Snapshot, aId: string, bId: string): ConnectResult {
     if (m.level <= OFF_DB) m.level = START_LEVEL
     return { ok: true, message: `${f} now goes to ${t}.` }
   }
-  if (from.kind === 'bus' && to.kind === 'matrix') {
-    const bus = s.buses.find((x) => x.id === from.id)
-    if (!bus) return { ok: false, message: 'That bus does not exist.' }
-    let x = bus.matrix.find((y) => y.mtx === to.id)
+  if ((from.kind === 'bus' || from.kind === 'main') && to.kind === 'matrix') {
+    const item = from.kind === 'bus' ? s.buses.find((x) => x.id === from.id) : s.mains.find((x) => x.id === from.id)
+    if (!item) return { ok: false, message: `That ${from.kind} does not exist.` }
+    let x = item.matrix.find((y) => y.mtx === to.id)
     if (x?.on && x.level > OFF_DB) return { ok: false, message: `${f} already sends to ${t}.` }
-    if (!x) { x = { mtx: to.id, on: false, level: -144 }; bus.matrix.push(x); bus.matrix.sort((p, q) => p.mtx - q.mtx) }
+    if (!x) { x = { mtx: to.id, on: false, level: -144 }; item.matrix.push(x); item.matrix.sort((p, q) => p.mtx - q.mtx) }
     x.on = true
     if (x.level <= OFF_DB) x.level = START_LEVEL
     return { ok: true, message: `${f} now sends to ${t}.` }
@@ -107,7 +110,7 @@ export function connect(s: Snapshot, aId: string, bId: string): ConnectResult {
     else s.outputs.push({ grp: to.grp, port: to.port, source })
     return { ok: true, message: `${t} now carries ${f}.` }
   }
-  return { ok: false, message: `${f} cannot feed ${t} directly. A channel reaches an output through a main, a bus or a matrix; mains do not feed matrices here.` }
+  return { ok: false, message: `${f} cannot feed ${t} directly. A channel reaches an output through a main, a bus or a matrix.` }
 }
 
 /** The opposite: takes the connection between two things away (what they are connected through is left alone). */
@@ -140,8 +143,9 @@ export function disconnect(s: Snapshot, aId: string, bId: string): ConnectResult
     x.on = false
     return { ok: true, message: `${f} no longer sends to ${t}.` }
   }
-  if (from.kind === 'bus' && to.kind === 'matrix') {
-    const x = s.buses.find((b) => b.id === from.id)?.matrix.find((y) => y.mtx === to.id)
+  if ((from.kind === 'bus' || from.kind === 'main') && to.kind === 'matrix') {
+    const item = from.kind === 'bus' ? s.buses.find((b) => b.id === from.id) : s.mains.find((m) => m.id === from.id)
+    const x = item?.matrix.find((y) => y.mtx === to.id)
     if (!x?.on || x.level <= OFF_DB) return not
     x.on = false
     return { ok: true, message: `${f} no longer sends to ${t}.` }
