@@ -42,8 +42,10 @@ export interface Send { bus: number; on: boolean; level: number; pre: boolean }
 /** A channel's (or a bus's) assignment to a main. */
 export interface MainSend { main: number; on: boolean; level: number }
 
-/** The console has this many channels. */
+/** The console has this many channels, buses and matrices. */
 export const MAX_CHANNELS = 40
+export const MAX_BUSES = 16
+export const MAX_MATRICES = 8
 
 export interface Channel {
   id: number

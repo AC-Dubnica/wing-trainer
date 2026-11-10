@@ -22,6 +22,7 @@ src/
     flow.ts              the signal-flow graph and the path through it
     session.ts           what is remembered between runs (window, folders, where the work ended)
     duplicate.ts         copies a channel to a free channel number and a new input
+    mixes.ts             adds, renames and removes buses and matrices
   renderer/
     app.ts               the screen: strips, knobs, graphs, dialogs, meters
     engine.ts            the audio graph
@@ -82,6 +83,10 @@ When the routing is edited in the Routing tab, this is done again, so a track fo
 ## Copying a channel
 
 `duplicate.ts` clones a channel (a deep copy, so the two are independent), gives it the lowest free channel number (the console has 40), the new input and a name, and marks it `copyOf` the original. The screen puts it next to the original on the faders, rebuilds the audio graph and the Routing tab, and the change list reports it as added. Because a recording is placed by input (see above), a track recorded on that input plays on the copy as well.
+
+## Buses and matrices
+
+`mixes.ts` finds the lowest free bus (16) or matrix (8) number and adds or removes one in the model. A new bus has every channel's send to it switched off (a slot that was empty in the snapshot may still hold old values, so they are cleared), no main assignment and no matrix send; removing one switches the sends to it off and takes the output ports that carried it out of the patch. The screen makes everything again afterwards (the strips, the panel, the Routing tab, the audio graph), and the change list reports the additions, renames and removals.
 
 ## The Routing tab
 

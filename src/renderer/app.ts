@@ -4,8 +4,9 @@ import { checkSnapshot, type Finding } from '../shared/checks'
 import { compCurve, eqCurve, gateCurve } from '../shared/curves'
 import { describeChange, diffSnapshots } from '../shared/diff'
 import { duplicateChannel, nextFreePort } from '../shared/duplicate'
+import { addBus, addMatrix, freeBusId, freeMatrixId, NAME_LENGTH, removeBus, removeMatrix, renameMix } from '../shared/mixes'
 import type { Channel, Snapshot } from '../shared/model'
-import { INPUT_GROUPS, INPUT_PORTS, MAX_CHANNELS, OFF_DB } from '../shared/model'
+import { INPUT_GROUPS, INPUT_PORTS, MAX_BUSES, MAX_CHANNELS, MAX_MATRICES, OFF_DB } from '../shared/model'
 import { mapTracks } from '../shared/multitrack'
 import { parseSnapshot } from '../shared/snapshot'
 import { dbAt, FADER_MAX, FADER_MIN, posOf } from '../shared/fader'
@@ -369,8 +370,9 @@ let selectedOut = ''
 function buildStrips(): void {
   stripUi.clear()
   const { bank, out } = faders()
-  $('bank').replaceChildren(...bank.map(makeStrip))
-  $('outs').replaceChildren(el('div', { class: 'cap', textContent: 'MAIN' }), el('div', { class: 'row2' }, ...out.map(makeStrip)))
+  const addTile = (label: string, title: string, enabled: boolean, onclick: () => void): HTMLButtonElement => el<HTMLButtonElement>('button', { class: 'addtile', textContent: label, title, disabled: !enabled, onclick })
+  $('bank').replaceChildren(...(layer === 'buses' ? [addTile('+ BUS', freeBusId(cur) === null ? `All ${MAX_BUSES} buses are in use` : 'Add a bus', freeBusId(cur) !== null, () => showAddMix('bus'))] : []), ...bank.map(makeStrip))
+  $('outs').replaceChildren(el('div', { class: 'cap', textContent: 'MAIN' }), el('div', { class: 'row2' }, ...out.map(makeStrip), addTile('+ MATRIX', freeMatrixId(cur) === null ? `All ${MAX_MATRICES} matrices are in use` : 'Add a matrix', freeMatrixId(cur) !== null, () => showAddMix('matrix'))))
   refreshAllStrips()
 }
 
@@ -604,15 +606,30 @@ function sendsSection(c: Channel): HTMLElement {
   return el('div', { class: 'sec wide' }, el('div', { class: 'st', textContent: 'SENDS' }), el('div', { class: 'sends' }, ...mains, ...sends))
 }
 
+/** The name box and the remove button of a bus or a matrix. */
+function mixHead(kind: 'bus' | 'matrix', id: number, name: string): HTMLElement {
+  const box = el<HTMLInputElement>('input', { type: 'text', maxLength: NAME_LENGTH, value: name })
+  box.setAttribute('aria-label', `Name of the ${kind}`)
+  box.onchange = () => { if (renameMix(cur, kind, id, box.value)) void mixesChanged(`${kind === 'bus' ? 'Bus' : 'Matrix'} ${id} is called ${box.value.trim().slice(0, NAME_LENGTH)}.`); else box.value = name }
+  const remove = el<HTMLButtonElement>('button', { class: 'flat danger', textContent: `REMOVE THIS ${kind.toUpperCase()}…`, onclick: () => showRemoveMix(kind, id, name) })
+  return el('div', { class: 'mixhead' }, el('label', { textContent: 'Name ' }, box), remove)
+}
+
 function busDetail(f: { kind: string; id: number }): HTMLElement[] {
   if (f.kind === 'bus') {
-    const b = cur.buses.find((x) => x.id === f.id)!
-    return [section(`BUS ${b.id} ${b.name}`,
+    const b = cur.buses.find((x) => x.id === f.id)
+    if (!b) return []
+    return [section(`BUS ${b.id} ${b.name}`, mixHead('bus', b.id, b.name),
       el('div', { class: 'sends' }, ...b.mains.map((m) => { const main = cur.mains.find((x) => x.id === m.main); return main ? el('div', { class: 'send' }, el('div', { class: 'kl', textContent: `To ${main.name}` }), button('ON', () => m.on, (v) => { m.on = v }, 'main')) : el('span') }),
         ...b.matrix.map((x) => { const mtx = cur.matrices.find((y) => y.id === x.mtx); return mtx ? el('div', { class: 'send' }, knob({ label: `To ${mtx.name}`, min: -60, max: 10, step: 0.5, get: () => (x.level <= OFF_DB ? -60 : x.level), set: (v) => { x.level = v <= -59.9 ? -144 : v }, fmt: (v) => (v <= -59.9 ? '-∞' : db1(v)), disabled: () => !x.on }), button('ON', () => x.on, (v) => { x.on = v })) : el('span') })),
       el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. The bus has no EQ or dynamics in the trainer yet.' }))]
   }
-  return [section(f.kind === 'main' ? 'MAIN' : 'MATRIX', el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output.' }))]
+  if (f.kind === 'matrix') {
+    const m = cur.matrices.find((x) => x.id === f.id)
+    if (!m) return []
+    return [section(`MATRIX ${m.id} ${m.name}`, mixHead('matrix', m.id, m.name), el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output. Buses send to it: see each bus.' }))]
+  }
+  return [section('MAIN', el('div', { class: 'dim note', textContent: 'The fader and mute are on the strip. Press LISTEN to hear this output.' }))]
 }
 
 function refreshDetailValues(): void { redraw.forEach((r) => r()) }
@@ -721,6 +738,59 @@ function dialog(title: string, body: HTMLElement, extra: HTMLElement[] = []): vo
 function showChecks(): void {
   const findings = checkSnapshot(cur)
   dialog('Checks', el('div', {}, ...(findings.length ? findings.map(findingRow) : [el('div', { class: 'dim', textContent: 'No problems found in the settings.' })])))
+}
+
+/** A bus or matrix was added, renamed or removed: everything that shows it is made again. */
+async function mixesChanged(message: string): Promise<void> {
+  if (listen.kind === 'bus' && !cur.buses.some((b) => b.id === listen.id)) listen = { kind: 'main', id: cur.mains[0]?.id ?? 1 }
+  if (listen.kind === 'matrix' && !cur.matrices.some((m) => m.id === listen.id)) listen = { kind: 'main', id: cur.mains[0]?.id ?? 1 }
+  buildStrips()
+  buildTop()
+  buildDetail()
+  routing.render()
+  await rebuildEngine()
+  refreshTop()
+  status(message)
+}
+
+function showAddMix(kind: 'bus' | 'matrix'): void {
+  const dlg = $<HTMLDialogElement>('dlg')
+  const id = kind === 'bus' ? freeBusId(cur) : freeMatrixId(cur)
+  if (id === null) return
+  const name = el<HTMLInputElement>('input', { type: 'text', maxLength: NAME_LENGTH, value: `${kind === 'bus' ? 'BUS' : 'MATRIX'} ${id}` })
+  name.setAttribute('aria-label', `Name of the new ${kind}`)
+  const add = el<HTMLButtonElement>('button', { class: 'flat primary', textContent: 'ADD', onclick: async () => {
+    const made = kind === 'bus' ? addBus(cur, name.value) : addMatrix(cur, name.value)
+    dlg.close()
+    if (!made) return
+    selectedOut = keyOf(kind, made.id)
+    await mixesChanged(`${kind === 'bus' ? 'Bus' : 'Matrix'} ${made.id} ${made.name} was added. Nothing is sent to it yet: ${kind === 'bus' ? 'switch on the sends of the channels that should go to it (the Sends section of a channel, or the Routing tab)' : 'switch on the send of a bus to it (select the bus)'}.`)
+  } })
+  name.onkeydown = (e) => { if (e.key === 'Enter') add.click() }
+  dlg.replaceChildren(el('h3', { textContent: `Add a ${kind}` }),
+    el('div', { class: 'body' }, el('p', { class: 'dim', textContent: kind === 'bus' ? `It takes bus number ${id} (${MAX_BUSES - cur.buses.length} free). Nothing is sent to it, and it goes to no main and no matrix, until you switch that on.` : `It takes matrix number ${id} (${MAX_MATRICES - cur.matrices.length} free). A matrix is fed by buses: switch on the send of a bus to it.` }), el('div', { class: 'copyrow' }, el('label', { textContent: 'Name ' }, name))),
+    el('div', { class: 'btns' }, el<HTMLButtonElement>('button', { class: 'flat', textContent: 'CANCEL', onclick: () => dlg.close() }), add))
+  dlg.showModal()
+  name.select()
+}
+
+function showRemoveMix(kind: 'bus' | 'matrix', id: number, name: string): void {
+  const dlg = $<HTMLDialogElement>('dlg')
+  const uses = kind === 'bus'
+    ? cur.channels.filter((c) => c.sends.some((s) => s.bus === id && s.on)).length
+    : cur.buses.filter((b) => b.matrix.some((m) => m.mtx === id && m.on)).length
+  const patched = cur.outputs.filter((o) => o.source.grp === (kind === 'bus' ? 'BUS' : 'MTX') && o.source.in === id).length
+  const remove = el<HTMLButtonElement>('button', { class: 'flat danger', textContent: 'REMOVE', onclick: async () => {
+    dlg.close()
+    if (kind === 'bus') removeBus(cur, id)
+    else removeMatrix(cur, id)
+    selectedOut = ''
+    await mixesChanged(`${kind === 'bus' ? 'Bus' : 'Matrix'} ${id} ${name} was removed.`)
+  } })
+  dlg.replaceChildren(el('h3', { textContent: `Remove ${kind} ${id} ${name}?` }),
+    el('div', { class: 'body' }, el('p', { textContent: `${kind === 'bus' ? `${uses} channel${uses === 1 ? ' sends' : 's send'} to it` : `${uses} bus${uses === 1 ? ' sends' : 'es send'} to it`}, and ${patched} output port${patched === 1 ? ' carries' : 's carry'} it. Removing it switches those sends off and unpatches those outputs.` }), el('p', { class: 'dim', textContent: 'RESET brings it back.' })),
+    el('div', { class: 'btns' }, el<HTMLButtonElement>('button', { class: 'flat', textContent: 'CANCEL', onclick: () => dlg.close() }), remove))
+  dlg.showModal()
 }
 
 function showCopy(c: Channel): void {

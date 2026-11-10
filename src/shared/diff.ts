@@ -1,4 +1,4 @@
-import { OFF_DB, type Bus, type Channel, type Main, type Snapshot } from './model'
+import { OFF_DB, type Bus, type Channel, type Main, type Matrix, type Snapshot } from './model'
 
 export interface Change {
   /** "Ch 13 SINGER 1", "Bus 4 STREAM". */
@@ -34,8 +34,9 @@ function channelValues(c: Channel): Values {
   return v
 }
 
-const busValues = (b: Bus): Values => ({ Fader: db(b.fader), Mute: onoff(b.mute), ...Object.fromEntries(b.mains.map((m) => [`To main ${m.main}`, `${onoff(m.on)} ${db(m.level)}`])) })
+const busValues = (b: Bus): Values => ({ Name: b.name, Fader: db(b.fader), Mute: onoff(b.mute), ...Object.fromEntries(b.mains.map((m) => [`To main ${m.main}`, `${onoff(m.on)} ${db(m.level)}`])) })
 const mainValues = (m: Main): Values => ({ Fader: db(m.fader), Mute: onoff(m.mute) })
+const matrixValues = (m: Matrix): Values => ({ Name: m.name, Fader: db(m.fader), Mute: onoff(m.mute) })
 
 function compare(where: string, a: Values, b: Values): Change[] {
   return Object.keys(b).filter((k) => a[k] !== undefined && a[k] !== b[k]).map((k) => ({ where, what: k, from: a[k], to: b[k] }))
@@ -52,10 +53,19 @@ export function diffSnapshots(base: Snapshot, now: Snapshot): Change[] {
     }
     if (was) out.push(...compare(`Ch ${c.id} ${c.name}`.trim(), channelValues(was), channelValues(c)))
   }
+  // Names of buses and matrices: the line says the name it has now (the one it had is in the line about the name).
   for (const b of now.buses) {
     const was = base.buses.find((x) => x.id === b.id)
-    if (was) out.push(...compare(`Bus ${b.id} ${b.name}`, busValues(was), busValues(b)))
+    if (was) out.push(...compare(`Bus ${b.id} ${was.name}`, busValues(was), busValues(b)))
+    else out.push({ where: `Bus ${b.id} ${b.name}`, what: 'Added', from: '-', to: 'new bus' })
   }
+  for (const b of base.buses) if (!now.buses.some((x) => x.id === b.id)) out.push({ where: `Bus ${b.id} ${b.name}`, what: 'Removed', from: 'bus', to: '-' })
+  for (const m of now.matrices) {
+    const was = base.matrices.find((x) => x.id === m.id)
+    if (was) out.push(...compare(`Matrix ${m.id} ${was.name}`, matrixValues(was), matrixValues(m)))
+    else out.push({ where: `Matrix ${m.id} ${m.name}`, what: 'Added', from: '-', to: 'new matrix' })
+  }
+  for (const m of base.matrices) if (!now.matrices.some((x) => x.id === m.id)) out.push({ where: `Matrix ${m.id} ${m.name}`, what: 'Removed', from: 'matrix', to: '-' })
   for (const m of now.mains) {
     const was = base.mains.find((x) => x.id === m.id)
     if (was) out.push(...compare(`Main ${m.id} ${m.name}`, mainValues(was), mainValues(m)))

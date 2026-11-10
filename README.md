@@ -49,7 +49,7 @@ The same tab lets you **remap** without a console:
 - **Faders and inputs:** move a channel left or right (▲ ▼) to change the order of the faders, and change the **input** a channel listens to (the group and the port). When a recording is open, the tracks follow: give a channel another input and the track recorded on that input plays on it.
 - **Outputs:** change what each output port carries, unpatch one (×) or patch a new one. The USB outputs are the recorder tracks, so changing them changes which recorded track plays on which fader.
 
-You can also **copy a channel to a new input** (the button is on the selected channel's panel in the Console view): the whole strip is copied to a free channel number that listens to the input you choose.
+You can **add, rename and remove buses and matrices** (BUSES, then the dashed + tiles) and **copy a channel to a new input** (the button is on the selected channel's panel in the Console view): the whole strip is copied to a free channel number that listens to the input you choose.
 
 It all works on the snapshot in the app, with nothing connected: the trainer never talks to a console. What you remap shows in **Changes** (and **Reset** undoes it), so you can repeat it on the real console.
 
