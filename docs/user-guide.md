@@ -108,6 +108,8 @@ While you hold the key the cursor becomes a crosshair, and the line at the botto
 | a main, bus or matrix | an output port | the output carries it (replacing what it carried) |
 | an input port | an output port | the input is passed straight to the output (the recorder tracks) |
 
+**Replacing asks first.** If a connection would take another one away, a dialog says so and asks: an output that carries something else (for example `AUX 2` carries bus `STREAM 2` and you connect a matrix to it) or a channel that already listens to another input. **CANCEL** (the default) changes nothing; **REPLACE** goes ahead. The same question is asked when **PATCH** in the Outputs table would replace what a port carries. Connections that only add (a send, a main assignment) are made at once, and so is a change of the source in a row of the Outputs table, which is a deliberate edit of that row.
+
 A send that is all the way down counts as not connected, so ⌘-click turns it on. Things of the same kind (two channels) are refused with a message. Every input port that has a name in the snapshot is in the diagram, used or not, so a channel can be connected to it. To patch an output port that is not shown (nothing is patched to it), use **PATCH** in the Outputs table.
 
 **Remap, without a console.** The two tables on the right change the routing in the app:

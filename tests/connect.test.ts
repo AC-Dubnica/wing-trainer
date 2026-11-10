@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import sample from '../fixtures/sample.snap.json'
-import { connect, disconnect, isConnected, parseRef, toggleConnection } from '../src/shared/connect'
+import { connect, disconnect, isConnected, parseRef, replacement, toggleConnection } from '../src/shared/connect'
 import { buildFlow } from '../src/shared/flow'
 import { parseSnapshot } from '../src/shared/snapshot'
 
@@ -136,5 +136,35 @@ describe('a main feeds a matrix', () => {
     expect(isConnected(s, 'main:1', 'matrix:1')).toBe(true)
     expect(toggleConnection(s, 'main:1', 'matrix:1')).toMatchObject({ ok: true, added: false })
     expect(has(s, 'main:1', 'matrix:1')).toBe(false)
+  })
+})
+
+describe('replacement: what a connection would take away', () => {
+  it('says what an output carries now when something else is connected to it', () => {
+    const s = fresh()
+    const text = replacement(s, 'matrix:1', 'out:AUX:2')! // AUX 2 carries bus 8 (STREAM 2)
+    expect(text).toMatch(/output AUX 2 carries bus STREAM 2 now/)
+    expect(text).toMatch(/Connecting HALL SPEAKERS replaces it/)
+    expect(text).toMatch(/STREAM 2 will no longer go to output AUX 2/)
+  })
+
+  it('says which input a channel would stop listening to', () => {
+    const s = fresh()
+    expect(replacement(s, 'in:C:12', 'ch:13')).toMatch(/SINGER 1 takes input C 2 now.*will no longer listen to C 2/)
+  })
+
+  it('says nothing when it only adds, when it is already so, or when the output is not patched', () => {
+    const s = fresh()
+    expect(replacement(s, 'ch:20', 'main:1')).toBeNull() // adds a main assignment
+    expect(replacement(s, 'in:C:2', 'ch:13')).toBeNull() // already connected
+    expect(replacement(s, 'main:1', 'out:AUX:6')).toBeNull() // AUX 6 is not patched
+    expect(replacement(s, 'main:1', 'out:C:7')).toBeNull() // C 7 already carries main 1
+  })
+
+  it('does not change the snapshot', () => {
+    const s = fresh()
+    const before = structuredClone(s)
+    replacement(s, 'matrix:1', 'out:AUX:2')
+    expect(s).toEqual(before)
   })
 })

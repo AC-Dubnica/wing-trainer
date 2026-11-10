@@ -21,7 +21,7 @@ const START_LEVEL = 0
 
 const RANK: Record<Ref['kind'], number> = { in: 0, ch: 1, bus: 2, main: 3, matrix: 3, out: 4 }
 
-function nameOf(s: Snapshot, r: Ref): string {
+export function nameOf(s: Snapshot, r: Ref): string {
   if (r.kind === 'in') return `${r.grp} ${r.port}${s.inputs.find((p) => p.grp === r.grp && p.port === r.port)?.name ? ` (${s.inputs.find((p) => p.grp === r.grp && p.port === r.port)!.name})` : ''}`
   if (r.kind === 'out') return `output ${r.grp} ${r.port}`
   if (r.kind === 'ch') return s.channels.find((c) => c.id === r.id)?.name || `channel ${r.id}`
@@ -158,6 +158,40 @@ export function disconnect(s: Snapshot, aId: string, bId: string): ConnectResult
     return { ok: true, message: `${t} no longer carries ${f}: it is not patched now.` }
   }
   return not
+}
+
+/** The ref of what an output (or anything) is patched to, from a source such as `{ grp: 'BUS', in: 8 }`. */
+function sourceRef(src: { grp: string; in: number }): Ref {
+  if (src.grp === 'MAIN') return { kind: 'main', id: src.in }
+  if (src.grp === 'MTX') return { kind: 'matrix', id: src.in }
+  if (src.grp === 'BUS') return { kind: 'bus', id: src.in }
+  return { kind: 'in', grp: src.grp, port: src.in }
+}
+
+/**
+ * What connecting the two would take away, in words, or null when it only adds: an output that carries something else loses that,
+ * and a channel that listens to another input stops listening to it. Nothing is changed. The screen asks before going on.
+ */
+export function replacement(s: Snapshot, aId: string, bId: string): string | null {
+  const a = parseRef(aId), b = parseRef(bId)
+  if (!a || !b || isConnected(s, aId, bId)) return null
+  const pair = ordered(a, b)
+  if (!pair) return null
+  const [from, to] = pair
+  if (to.kind === 'out' && from.kind !== 'ch') {
+    const o = s.outputs.find((x) => x.grp === to.grp && x.port === to.port)
+    if (!o) return null
+    const was = nameOf(s, sourceRef(o.source))
+    const kind = o.source.grp === 'MAIN' ? 'main' : o.source.grp === 'MTX' ? 'matrix' : o.source.grp === 'BUS' ? 'bus' : 'input'
+    return `${nameOf(s, to)} carries ${kind} ${was} now. Connecting ${nameOf(s, from)} replaces it: ${was} will no longer go to ${nameOf(s, to)}.`
+  }
+  if (from.kind === 'in' && to.kind === 'ch') {
+    const c = s.channels.find((x) => x.id === to.id)
+    if (!c || !c.hasSource) return null
+    const was = `${c.source.grp} ${c.source.in}`
+    return `${nameOf(s, to)} takes input ${was} now. Connecting ${nameOf(s, from)} replaces it: ${nameOf(s, to)} will no longer listen to ${was}.`
+  }
+  return null
 }
 
 /** Whether two things of the flow are connected now (in either order): a line is drawn between them. */

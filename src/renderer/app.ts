@@ -267,6 +267,7 @@ const routing = createRouting($('routing'), {
     refreshTop()
   },
   say: (text) => status(text),
+  confirm: (title, text, ok) => confirmBox(title, text, ok),
   edited: () => {
     engine?.apply(cur) // a send or an assignment may have changed
     assignRecording()
@@ -763,6 +764,20 @@ function dialog(title: string, body: HTMLElement, extra: HTMLElement[] = []): vo
 function showChecks(): void {
   const findings = checkSnapshot(cur)
   dialog('Checks', el('div', {}, ...(findings.length ? findings.map(findingRow) : [el('div', { class: 'dim', textContent: 'No problems found in the settings.' })])))
+}
+
+/** A yes or no question in the dialog; resolves true only for the button that goes ahead (Escape and CANCEL mean no). */
+function confirmBox(title: string, text: string, ok: string): Promise<boolean> {
+  const dlg = $<HTMLDialogElement>('dlg')
+  return new Promise((resolve) => {
+    let answer = false
+    const go = el<HTMLButtonElement>('button', { class: 'flat primary', textContent: ok, onclick: () => { answer = true; dlg.close() } })
+    const cancel = el<HTMLButtonElement>('button', { class: 'flat', textContent: 'CANCEL', onclick: () => dlg.close() })
+    dlg.replaceChildren(el('h3', { textContent: title }), el('div', { class: 'body' }, el('p', { textContent: text })), el('div', { class: 'btns' }, cancel, go))
+    dlg.addEventListener('close', () => resolve(answer), { once: true })
+    dlg.showModal()
+    cancel.focus() // the safe answer is the one under the Enter key
+  })
 }
 
 /** A bus or matrix was added, renamed or removed: everything that shows it is made again. */

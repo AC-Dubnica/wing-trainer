@@ -1,4 +1,4 @@
-import { toggleConnection } from '../shared/connect'
+import { replacement, toggleConnection } from '../shared/connect'
 import { buildFlow, trace, type FlowEdge, type FlowNode } from '../shared/flow'
 import { INPUT_GROUPS, INPUT_PORTS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
 
@@ -12,6 +12,8 @@ export interface RoutingDeps {
   selectChannel(id: number): void
   /** Says something to the user (the line at the bottom of the window). */
   say(text: string): void
+  /** Asks a yes or no question (a dialog); true when the user goes ahead. */
+  confirm(title: string, text: string, ok: string): Promise<boolean>
   colors: string[]
   lightColors: Set<number>
 }
@@ -52,12 +54,15 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
     const bar = el('div', { class: 'fbar' })
     if (n.kind === 'ch') bar.style.background = deps.colors[n.color] ?? deps.colors[0]
     const c = el('div', { class: `fnode ${n.kind} ${n.muted ? 'muted' : ''}`, title: n.sub }, ...(n.kind === 'ch' ? [bar] : []), el('div', { class: 'fl', textContent: n.label }), el('div', { class: 'fs', textContent: n.sub }))
-    c.onclick = (e) => {
+    c.onclick = async (e) => {
       // With an item selected, ⌘-click (Ctrl on Windows and Linux) on another connects them, or disconnects them if they are connected.
       if (isLink(e)) {
         // The key is held: this click is meant to make or remove a connection, so it never fails silently.
         if (!selected) { deps.say(`First select an item with a plain click, then hold ${isMac ? '⌘' : 'Ctrl'} and click the one to connect it to (or disconnect it from).`); return }
         if (selected === n.id) { deps.say('That is the selected item: hold the key and click a different one.'); return }
+        // If it would take another connection away (an output that carries something else, a channel's old input), ask first.
+        const lost = replacement(deps.snap(), selected, n.id)
+        if (lost && !(await deps.confirm('Replace the connection?', lost, 'REPLACE'))) { deps.say('Nothing was changed.'); return }
         const r = toggleConnection(deps.snap(), selected, n.id)
         deps.say(r.message)
         if (r.ok) changed()
@@ -215,9 +220,13 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
       el('td', {}, select(OUTPUT_SOURCES.filter((g) => g !== 'OFF'), sg, 'Source group', (v) => { sg = v }), ' ', numberBox(sn, 25, 'Source number', (v) => { sn = v })),
       el('td', {}, el<HTMLButtonElement>('button', {
         class: 'mini wide', textContent: 'PATCH', title: 'Patch this output (it replaces what the port had)',
-        onclick: () => {
+        onclick: async () => {
           const port = Math.min(np, OUTPUT_GROUPS[ng])
           const existing = snap.outputs.find((x) => x.grp === ng && x.port === port)
+          if (existing && !(existing.source.grp === sg && existing.source.in === sn)) {
+            const was = `${existing.source.grp} ${existing.source.in}`
+            if (!(await deps.confirm('Replace what the output carries?', `Output ${ng} ${port} carries ${was} now. Patching ${sg} ${sn} to it replaces that: ${was} will no longer go there.`, 'REPLACE'))) return
+          }
           if (existing) existing.source = { grp: sg, in: sn }
           else snap.outputs.push({ grp: ng, port, source: { grp: sg, in: sn } })
           changed()
