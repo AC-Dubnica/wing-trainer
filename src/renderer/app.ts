@@ -9,7 +9,7 @@ import { addBus, addMatrix, freeBusId, freeMatrixId, NAME_LENGTH, removeBus, rem
 import type { Channel, Snapshot } from '../shared/model'
 import { INPUT_GROUPS, INPUT_PORTS, MAX_BUSES, MAX_CHANNELS, MAX_MATRICES, OFF_DB } from '../shared/model'
 import { mapTracks } from '../shared/multitrack'
-import { ensureModel, parseSnapshot } from '../shared/snapshot'
+import { ensureModel, parseSnapshot, stereoOf } from '../shared/snapshot'
 import { dbAt, FADER_MAX, FADER_MIN, posOf } from '../shared/fader'
 import { Engine, testSignal, type Listen } from './engine'
 import { createRouting } from './routing'
@@ -342,6 +342,10 @@ async function restoreState(raw: unknown): Promise<void> {
   const known = new Set(base.channels.map((c) => c.id))
   if (s.cur.channels.some((c) => !known.has(c.id) && !c.copyOf)) return // it was made from another version of this file
   cur = ensureModel(s.cur)
+  // What the file says about its input ports (their names and modes) is not something the user edits, and a model saved by an older
+  // version may lack it (the stereo mode was added later): it is taken from the file again, and the channels' stereo follows.
+  cur.inputs = structuredClone(base.inputs)
+  for (const c of cur.channels) c.stereo = stereoOf(cur, c.hasSource ? c.source : null)
   const ids = new Set(cur.channels.map((c) => c.id))
   order = [...(Array.isArray(s.order) ? s.order : []).filter((id) => ids.has(id)), ...cur.channels.map((c) => c.id).filter((id) => !(s.order ?? []).includes(id))]
   selected = ids.has(s.selected ?? -1) ? (s.selected as number) : cur.channels[0]?.id ?? 0

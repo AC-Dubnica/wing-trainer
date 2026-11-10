@@ -119,8 +119,8 @@ export function ensureModel(s: Snapshot): Snapshot {
   s.matrices ??= []
   for (const m of s.mains) m.matrix ??= []
   for (const b of s.buses) { b.matrix ??= []; b.mains ??= [] }
-  for (const c of s.channels) { c.sends ??= []; c.mains ??= []; c.stereo ??= stereoOf(s, c.hasSource ? c.source : null) }
   for (const p of s.inputs) p.mode ??= 'M'
+  for (const c of s.channels) { c.sends ??= []; c.mains ??= []; c.stereo ??= stereoOf(s, c.hasSource ? c.source : null) }
   return s
 }
 
