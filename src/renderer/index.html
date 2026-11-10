@@ -2,57 +2,83 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WING Trainer</title>
     <style>
-      :root { color-scheme: dark; --bg: #14161b; --panel: #1c1f27; --line: #2c313c; --text: #e6e8ee; --dim: #8b93a3; --accent: #3b82f6; --warn: #f59e0b; --bad: #ef4444; --good: #22c55e }
+      :root { color-scheme: dark; --bg: #0a0c0f; --panel: #12151a; --raised: #181c22; --line: #232932; --text: #dde2ea; --dim: #7b8494; --blue: #2f9bff; --amber: #f5a623; --red: #d9302c; --yellow: #e8c630; --green: #2fc46e; --knob: #aeb7c4 }
       * { box-sizing: border-box }
       html, body { height: 100%; margin: 0 }
-      body { background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden }
-      button, select, input { font: inherit; color: inherit }
-      button { background: #262b36; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer }
-      button:hover:not(:disabled) { background: #2e3441 } button:disabled { opacity: .45; cursor: default }
-      button.primary { background: var(--accent); border-color: var(--accent) } button.on { background: var(--accent); border-color: var(--accent) }
-      select { background: #262b36; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px }
-      header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--line) }
-      header h1 { font-size: 15px; margin: 0 10px 0 0 } header .grow { flex: 1 } header .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px }
-      .badge { background: var(--warn); color: #111; border-radius: 9px; padding: 0 6px; font-size: 11px; font-weight: 700; margin-left: 4px }
-      .outmeter { width: 120px; height: 10px; background: #0d0f13; border: 1px solid var(--line); border-radius: 3px; overflow: hidden } .outmeter > i { display: block; height: 100%; width: 0; background: var(--good) }
-      main { min-height: 0; display: grid; grid-template-rows: minmax(250px, 1fr) minmax(220px, auto) }
-      #strips { display: flex; gap: 6px; padding: 12px 14px; overflow-x: auto; align-items: stretch }
-      .strip { flex: 0 0 74px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer }
-      .strip.sel { outline: 2px solid var(--accent) } .strip.silent { opacity: .55 }
-      .strip .nm { font-size: 11px; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis } .strip .no { font-size: 10px; color: var(--dim) }
-      .strip .bar { width: 100%; height: 4px; border-radius: 2px }
-      .strip .gr { font-size: 10px; color: var(--warn); height: 13px; white-space: nowrap }
-      .strip .ms { display: flex; gap: 4px } .strip .ms button { padding: 2px 8px; font-weight: 700 }
-      .strip .ms button.mute.on { background: var(--bad); border-color: var(--bad) } .strip .ms button.solo.on { background: var(--warn); border-color: var(--warn); color: #111 }
-      .strip .fd { flex: 1; min-height: 0; display: flex; gap: 6px; align-items: stretch }
-      .strip .vm { width: 8px; background: #0d0f13; border: 1px solid var(--line); border-radius: 3px; position: relative; overflow: hidden } .strip .vm > i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--good); height: 0 }
-      .strip input[type=range].fader { writing-mode: vertical-lr; direction: rtl; width: 24px; height: 100%; margin: 0; accent-color: var(--accent) }
-      .strip .db { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--dim) }
-      #detail { border-top: 1px solid var(--line); background: var(--panel); padding: 10px 14px; overflow: auto }
-      #detail h2 { margin: 0 12px 0 0; font-size: 14px } .tabs { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap } .tabs .grow { flex: 1 }
-      .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px }
-      fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0; padding: 8px 12px 10px } legend { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; padding: 0 6px }
-      .row { display: grid; grid-template-columns: 110px 1fr 74px; align-items: center; gap: 8px; margin: 3px 0 } .row label { color: var(--dim) } .row .v { text-align: right; font-variant-numeric: tabular-nums }
-      .row input[type=range] { width: 100%; accent-color: var(--accent) } .hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 4px } .hdr b { flex: 1 }
-      table { border-collapse: collapse; width: 100% } td, th { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--line) } th { color: var(--dim); font-weight: 500 }
-      .finding { padding: 4px 0 } .finding.warn::before { content: '⚠ '; color: var(--warn) } .finding.note::before { content: '• '; color: var(--dim) }
-      footer { padding: 6px 14px; color: var(--dim); background: var(--panel); border-top: 1px solid var(--line); min-height: 28px }
-      dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 16px; width: min(720px, 90vw); max-height: 80vh } dialog::backdrop { background: #0008 }
-      dialog h3 { margin: 0 0 10px } dialog .body { overflow: auto; max-height: 55vh; margin-bottom: 12px } dialog .btns { display: flex; gap: 8px; justify-content: flex-end }
-      .dim { color: var(--dim) } .muted { opacity: .5 }
+      body { background: var(--bg); color: var(--text); font: 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; user-select: none }
+      button, select { font: inherit; color: inherit }
+      button { cursor: pointer } button:disabled { opacity: .4; cursor: default }
+      select { background: var(--raised); border: 1px solid var(--line); border-radius: 3px; padding: 3px 6px }
+
+      /* top bar */
+      header { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #07090b; border-bottom: 1px solid var(--line); flex-wrap: wrap }
+      .brand { display: flex; align-items: baseline; gap: 6px; margin-right: 8px } .brand b { font-size: 20px; letter-spacing: .22em; font-weight: 800 } .brand span { font-size: 10px; letter-spacing: .3em; color: var(--amber) }
+      .tabs { display: flex } .tab { background: var(--raised); border: 1px solid var(--line); padding: 5px 14px; letter-spacing: .1em; font-size: 11px; font-weight: 700; color: var(--dim) } .tab:first-child { border-radius: 3px 0 0 3px } .tab:last-child { border-radius: 0 3px 3px 0; border-left: 0 } .tab.on { background: var(--blue); border-color: var(--blue); color: #fff }
+      .flat { background: transparent; border: 1px solid #2a313b; border-radius: 3px; padding: 5px 10px; font-size: 10.5px; letter-spacing: .08em; font-weight: 600; color: var(--text) } .flat:hover { background: var(--raised) }
+      .play { background: var(--raised); border: 1px solid #2a313b; border-radius: 3px; padding: 5px 16px; font-weight: 800; letter-spacing: .1em; font-size: 11px } .play.on { background: var(--red); border-color: var(--red) }
+      .sep { width: 1px; height: 22px; background: var(--line) } .grow { flex: 1 } .dim { color: var(--dim) } .lst { color: var(--dim); font-size: 10px; letter-spacing: .08em; display: flex; align-items: center; gap: 6px }
+      .badge { background: var(--amber); color: #111; border-radius: 8px; padding: 0 6px; font-size: 10px; font-weight: 800; margin-left: 6px }
+      .outmeter { width: 140px; height: 8px; background: #05070a; border: 1px solid var(--line); border-radius: 2px; overflow: hidden } .outmeter > i { display: block; height: 100%; width: 0; background: linear-gradient(to right, #2fc46e 0 70%, #f2c744 70% 88%, #ef4444 88%); background-size: 140px 100% }
+
+      main { min-height: 0; display: grid; grid-template-rows: minmax(300px, 41vh) 1fr }
+      #console { display: flex; gap: 0; padding: 10px 12px 8px; min-height: 0; border-bottom: 1px solid var(--line); background: linear-gradient(#0c0f13, #090b0e) }
+      #bank { flex: 1; display: flex; gap: 4px; overflow-x: auto; min-width: 0; padding-bottom: 4px }
+      #outs { flex: none; border-left: 1px solid var(--line); margin-left: 8px; padding-left: 10px; display: flex; flex-direction: column } #outs .cap { font-size: 10px; letter-spacing: .2em; color: var(--dim); margin-bottom: 4px } #outs .row2 { display: flex; gap: 4px; flex: 1; min-height: 0 }
+
+      /* strips */
+      .strip { flex: 0 0 76px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; display: flex; flex-direction: column; min-height: 0; cursor: pointer; overflow: hidden }
+      .strip.sel { border-color: #fff; box-shadow: 0 0 0 1px #fff, 0 0 12px #ffffff30 } .strip.silent .fd, .strip.silent .db { opacity: .45 }
+      .strip .top { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 6px 0 } .strip .top b { font-size: 15px; font-weight: 800 } .strip .top span { font-size: 10px; color: var(--dim) }
+      .strip .chips { display: flex; gap: 3px; padding: 3px 6px 0; height: 17px } .chip { font-size: 9px; font-weight: 800; width: 15px; text-align: center; border-radius: 2px; background: #1a1f26; color: #4b5563 } .chip.on { background: var(--amber); color: #111 }
+      .strip .gr { font-size: 9px; color: var(--amber); height: 12px; padding: 0 6px; white-space: nowrap }
+      .fd { flex: 1; min-height: 100px; display: flex; gap: 0; padding: 2px 4px; justify-content: center; align-items: stretch }
+      .scale { position: relative; width: 24px; font-size: 9px; color: var(--dim); font-variant-numeric: tabular-nums; margin: 20px 0 }
+      .scale span { position: absolute; right: 2px; transform: translateY(50%); line-height: 1 } .scale span::after { content: ''; display: inline-block; width: 4px; height: 1px; background: #3b4350; margin-left: 2px; vertical-align: middle }
+      input.fader { appearance: none; -webkit-appearance: none; background: transparent; writing-mode: vertical-lr; direction: rtl; width: 26px; height: 100%; margin: 0; padding: 0; cursor: ns-resize }
+      input.fader::-webkit-slider-runnable-track { width: 5px; background: #040506; border: 1px solid #2c333d; border-radius: 3px }
+      input.fader::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 26px; height: 40px; margin-left: -11px; border-radius: 3px; border: 1px solid #0b0d10; background: linear-gradient(#5a6371 0 10%, #39404b 10% 46%, #e8ebf0 46% 54%, #39404b 54% 90%, #2a3039 90%); box-shadow: 0 2px 4px #0008 }
+      .vm { width: 10px; margin: 20px 0 20px 4px; background: linear-gradient(to top, #1fbf63 0 78%, #f2c744 78% 92%, #ef4444 92%); border: 1px solid #05070a; position: relative; overflow: hidden }
+      .vm i { position: absolute; left: 0; right: 0; top: 0; height: 100%; background: #07090c } .vm::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 3px, #07090c 3px 4px); pointer-events: none }
+      .strip .db { text-align: center; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; margin: 2px 6px; padding: 2px 0; background: #07090c; border: 1px solid var(--line); border-radius: 3px }
+      .strip .btns { display: flex; flex-direction: column; gap: 3px; padding: 0 6px 5px }
+      .strip .btns button { height: 22px; background: #1a1f26; border: 1px solid #2a313b; border-radius: 3px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #a3acb9 }
+      .strip .btns .mute.on { background: var(--red); border-color: var(--red); color: #fff } .strip .btns .solo.on { background: var(--yellow); border-color: var(--yellow); color: #111 }
+      .strip .tag { padding: 6px 4px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase }
+      .strip.bus, .strip.main, .strip.matrix { flex-basis: 84px }
+
+      /* detail */
+      #detail { overflow: auto; padding: 10px 12px 14px; background: #0c0f13 }
+      .dhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px } .cn { font-weight: 800; letter-spacing: .12em; font-size: 14px } .ctag { padding: 3px 12px; border-radius: 3px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em }
+      .nb { color: var(--amber); font-weight: 700; cursor: help }
+      .sections { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start }
+      .sec { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px 10px } .sec.wide { flex: 1 1 100% }
+      .st { font-size: 10px; letter-spacing: .18em; color: var(--dim); font-weight: 700; margin-bottom: 6px }
+      .tr { display: flex; gap: 4px; margin-bottom: 6px } .tog { background: #1a1f26; border: 1px solid #2a313b; border-radius: 3px; padding: 3px 10px; font-size: 10px; font-weight: 800; letter-spacing: .08em; color: #9aa3b0 } .tog.on { background: var(--blue); border-color: var(--blue); color: #fff } .tog.pre.on { background: var(--amber); border-color: var(--amber); color: #111 }
+      .krow { display: flex; gap: 2px; flex-wrap: wrap } .graph { display: block; border: 1px solid var(--line); border-radius: 4px; margin: 0 0 6px }
+      .knob { width: 56px; text-align: center; cursor: ns-resize; outline: none; border-radius: 4px; touch-action: none } .knob:focus-visible { box-shadow: 0 0 0 2px var(--blue) } .knob.off { opacity: .4 }
+      .kl { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+      .kv { white-space: nowrap; font-size: 10px; font-variant-numeric: tabular-nums; background: #07090c; border: 1px solid var(--line); border-radius: 3px; padding: 1px 2px; margin: 0 4px }
+      .ktrack { fill: none; stroke: #232932; stroke-width: 4; stroke-linecap: round } .kval { fill: none; stroke-width: 4; stroke-linecap: round } .kneedle { stroke: #eef1f5; stroke-width: 2; stroke-linecap: round }
+      .bands { display: flex; gap: 6px } .band { display: flex; flex-direction: column; align-items: center } .bt { font-size: 9px; letter-spacing: .08em; font-weight: 700; color: var(--dim); border-bottom: 2px solid; padding-bottom: 2px; margin-bottom: 2px; width: 100%; text-align: center }
+      .sends { display: flex; flex-wrap: wrap; gap: 10px 6px } .send { width: 70px; display: flex; flex-direction: column; align-items: center; gap: 3px } .send .tr { margin: 0 }
+      .note { font-size: 11px; padding: 6px 0; max-width: 260px }
+      .finding { padding: 4px 0; user-select: text } .finding.warn::before { content: '⚠ '; color: var(--amber) } .finding.note::before { content: '• '; color: var(--dim) }
+      footer { display: flex; gap: 16px; padding: 5px 14px; color: var(--dim); background: #07090b; border-top: 1px solid var(--line); min-height: 26px; font-size: 11px } footer #msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis } footer #src { color: var(--amber); white-space: nowrap }
+      dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 16px; width: min(720px, 90vw); max-height: 80vh } dialog::backdrop { background: #000a }
+      dialog h3 { margin: 0 0 10px; letter-spacing: .08em } dialog .body { overflow: auto; max-height: 55vh; margin-bottom: 12px } dialog .btns { display: flex; gap: 8px; justify-content: flex-end }
     </style>
   </head>
   <body>
     <header id="top"></header>
     <main>
-      <section id="strips" aria-label="Channels"></section>
+      <section id="console" aria-label="Faders"><div id="bank"></div><div id="outs"></div></section>
       <section id="detail" aria-label="Selected channel"></section>
     </main>
-    <footer id="status"></footer>
+    <footer id="status"><span id="msg"></span><span id="src"></span></footer>
     <dialog id="dlg"></dialog>
     <script src="app.js"></script>
   </body>

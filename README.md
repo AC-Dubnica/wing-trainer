@@ -1,6 +1,6 @@
 # WING Trainer
 
-A practice console for a **Behringer WING** setup. Open a snapshot saved from the console and a recording of a service, and try the mix on the computer: move faders, change the EQ, the gate and the compressor, build a monitor or stream mix, and hear what it does. Nothing is sent to a real console.
+A practice console for a **Behringer WING** setup. Open a snapshot saved from the console and a recording of a service, and try the mix on a screen laid out like the console's (colour-coded channel strips with the name tag at the bottom, a fader with its dB scale and segmented meter, rotary knobs, and EQ, gate and compressor graphs): move faders, change the EQ, the gate and the compressor, build a monitor or stream mix, and hear what it does. Nothing is sent to a real console.
 
 ![WING Trainer with the sample setup](docs/main.png)
 
@@ -24,7 +24,7 @@ Node 22 or newer. The app starts with an **anonymised sample setup** (a preacher
    - A single file can be played on any channel with **Play a file on this channel…** (for example a stereo mix on a playback channel).
    - Decoded audio takes a lot of memory: use an excerpt of two to ten minutes, and files up to 200 MB.
 3. **Play** starts every channel together and loops them. **Listen to** chooses what the speakers get: a main, a bus (a monitor mix or the stream mix) or a matrix. **S** (solo) listens to that channel alone.
-4. Click a channel to see its **Processing** (low and high cut, a six-band EQ, gate, compressor), its **Sends** (to the buses and the mains, pre or post fader) and its **Notes**.
+4. Click a channel to see its settings below: **input** (trim, pan, low and high cut), **gate** and **dynamics** with their curves, a six-band **EQ** with its response curve, and its **sends** (to the buses and the mains, pre or post fader). Turn a knob by dragging it up or down (hold Shift for fine steps), with the wheel or the arrow keys; double-click to put it back. **CHANNELS / BUSES** switches the strips between the channels and the buses; the mains and the matrix are always on the right (LISTEN plays one).
 5. **Checks** lists trouble spots found from the settings (a gate that opens too fast, a compressor without make-up gain, a fader pushed up, a channel that goes nowhere). **Changes** lists everything you changed against the snapshot, in words, so you can make the same changes on the console (the trainer does not write snapshots). **Reset** goes back to the snapshot.
 
 ## What is simulated
@@ -51,4 +51,4 @@ Electron and TypeScript, bundled with esbuild.
 
 ## Not in this version
 
-Lessons with goals and hints, fault drills, effects, the console's layers and DCA groups, and other languages (English only for now).
+Lessons with goals and hints, fault drills, effects, the console's layers and DCA groups, and other languages (English only for now). The look follows the WING's from memory and from its documentation, not from its own software, so colours and layout are close but not exact.

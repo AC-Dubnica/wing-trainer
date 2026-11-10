@@ -19,7 +19,7 @@ Dev hooks of the main process: `WING_TRAINER_EVAL="js"` runs JS in the page, pri
 - `src/shared`: model and pure logic. `snapshot.ts` (tolerant reader of the console's JSON; unknown or missing fields get neutral values), `convert.ts` (console value -> audio parameter), `checks.ts`, `diff.ts`, `multitrack.ts` (recorder track n -> input via `io.out.USB` -> channels patched to that input).
 - `src/renderer/engine.ts`: the Web Audio graph. Channel: trim -> low cut -> high cut -> 6 EQ biquads -> gate worklet -> compressor worklet -> pre tap -> fader -> pan -> post tap; sends tap pre or post, main sends and a solo send come off the post tap; buses sum into a fader and feed mains and matrices; one monitor node plays what is listened to (or the solo bus). `apply(snapshot)` sets every parameter and is cheap, so the screen calls it after each edit; only a change of structure (a pre/post switch, a new snapshot) calls `build`.
 - `gate-worklet.js` and `comp-worklet.js` are copied from PreStreamer's mixer (`src/renderer/`).
-- `src/renderer/app.ts`: the screen (strips, detail tabs, dialogs, meters).
+- `src/renderer/app.ts`: the screen, laid out like the console: strips for channels or buses (`Fader` is what a strip needs, so channels, buses, mains and matrices share one), mains and matrices on the right, the selected channel's input, gate, EQ, dynamics and sends below as knobs (`knob()`: drag, wheel, keys) and canvas graphs. `afterEdit()` runs after every edit (sound, little G E D lights, curves, counters). `src/shared/fader.ts` is the fader travel (also used by the meters and the dB scale), `src/shared/curves.ts` the EQ response and the gate and compressor curves. The channel colours are the console's 12 (`COLORS`).
 
 ## Constraints
 
