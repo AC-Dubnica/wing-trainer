@@ -26,6 +26,10 @@ Dev hooks of the main process: `WING_TRAINER_EVAL="js"` runs JS in the page, pri
 
 The remembered work state contains the edited snapshot model, which an older version of the app wrote. **Whenever a field is added to the model (`src/shared/model.ts`), add its default to `ensureModel` in `src/shared/snapshot.ts`**, or a user who updates the app finds everything that reads the new field broken until the saved state is deleted (that is how adding a matrix and connecting in the Routing tab stopped working once). `scripts/e2e-oldstate.mjs` runs the app on a saved state that lacks the newest fields. If the saved work cannot be restored at all the app opens the snapshot as it is and says so.
 
+## Stereo channels
+
+`Channel.stereo` (`null`, `'ST'` or `'MS'`) is derived from the mode of the channel's input port (`InputPort.mode`: `M`, `ST`, `M/S`) by `stereoOf`; **never assign `source` by hand, use `setSource`** (in `snapshot.ts`) so `stereo` follows. A stereo channel takes two consecutive ports (the odd one is the left); `mapTracks` places two tracks on it (`placements` with a side), the engine makes its whole chain two channels wide, and the diagram labels the pair `C 9+10`. The export writes only the input port: the console works out stereo from the port's mode. Width is read from the snapshot (`wid`) but not simulated.
+
 ## Architecture
 
 - `src/shared`: model and pure logic. `snapshot.ts` (tolerant reader of the console's JSON; unknown or missing fields get neutral values), `convert.ts` (console value -> audio parameter), `checks.ts`, `diff.ts`, `multitrack.ts` (recorder track n -> input via `io.out.USB` -> channels patched to that input).

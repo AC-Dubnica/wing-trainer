@@ -39,9 +39,18 @@ export function buildFlow(s: Snapshot): { nodes: FlowNode[]; edges: FlowEdge[] }
   const edges: FlowEdge[] = []
   const add = (n: FlowNode): void => { if (!nodes.has(n.id)) nodes.set(n.id, n) }
   const portName = (grp: string, port: number): string => s.inputs.find((p) => p.grp === grp && p.port === port)?.name ?? ''
+  const modeOf = (grp: string, port: number): string => s.inputs.find((p) => p.grp === grp && p.port === port)?.mode ?? 'M'
   const inputNode = (grp: string, port: number): string => {
     const id = inId(grp, port)
-    add({ id, kind: 'in', label: `${grp} ${port}`, sub: portName(grp, port), color: 0, muted: false })
+    // A stereo pair is two ports (an odd one for the left and the next for the right): the left one says so.
+    const stereo = modeOf(grp, port) !== 'M'
+    const left = stereo && port % 2 === 1
+    const name = portName(grp, port)
+    add({
+      id, kind: 'in', color: 0, muted: false,
+      label: left ? `${grp} ${port}+${port + 1}` : `${grp} ${port}`,
+      sub: left ? `${name} (${modeOf(grp, port) === 'M/S' ? 'mid + side' : 'stereo'})` : stereo ? `${name} (right of ${grp} ${port - 1})` : name,
+    })
     return id
   }
 

@@ -68,6 +68,7 @@ source -> trim -> low cut -> high cut -> six EQ bands -> gate -> compressor -> [
 - A **bus** sums its sends, goes through its fader and mute, and feeds the mains and the matrices.
 - One **monitor** node plays what LISTEN selects (or the solo bus while a channel is soloed).
 - `apply(snapshot)` sets every parameter and is cheap, so the screen calls it after each edit; only a change of structure (a new snapshot, a switch between PRE and POST) rebuilds the graph.
+- A channel on a stereo pair of ports (`InputPort.mode` `ST`, or `M/S`; `Channel.stereo`, worked out by `stereoOf`) keeps two channels through the whole chain: its worklets are made with two output channels, a `ChannelMerger` joins a left and a right track, a mono track on a stereo channel plays on both sides, and a mid/side pair is decoded with a small matrix of gains. `setSides(channel, left, right)` gives a stereo channel its two tracks; `setBuffer` a mono one.
 - The engine works on any audio context, so the test renders the graph in an `OfflineAudioContext`.
 
 Without a recording each channel plays a generated **test signal**: noise in bursts, different per channel, so the gate and compressor have something to work on.
@@ -78,7 +79,7 @@ The console's USB recorder writes one track per recorder output. The snapshot sa
 
 1. the number at the end of the file name is the recorder track;
 2. the track's input is looked up in the USB output patch;
-3. every channel whose source is that input plays the track (two channels can share one receiver).
+3. every channel whose source is that input plays the track (two channels can share one receiver). A **stereo** channel takes the track of its own input as its left side and the track of the **next port** as its right side (`placements` in the result say which side each track is for).
 
 When the routing is edited in the Routing tab, this is done again, so a track follows its input from fader to fader.
 

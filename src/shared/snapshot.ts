@@ -1,4 +1,4 @@
-import { OFF_DB, type Bus, type Channel, type Comp, type Eq, type EqBand, type Gate, type InputPort, type MainSend, type Main, type Matrix, type MatrixSend, type OutputPatch, type Send, type Snapshot, type Source } from './model'
+import { OFF_DB, type Stereo, type Bus, type Channel, type Comp, type Eq, type EqBand, type Gate, type InputPort, type MainSend, type Main, type Matrix, type MatrixSend, type OutputPatch, type Send, type Snapshot, type Source } from './model'
 
 type Json = Record<string, unknown>
 
@@ -62,6 +62,7 @@ function parseChannel(id: number, c: Json): Channel {
     color: num(c.col, 0),
     source,
     hasSource: source.grp !== 'OFF',
+    stereo: null, // set when the input ports are known (see parseSnapshot)
     trim: num(obj(obj(c.in).set).trim, 0),
     mute: bool(c.mute),
     fader: num(c.fdr, OFF_DB),
@@ -98,13 +99,28 @@ function parseBus(id: number, b: Json): Bus {
  * A snapshot model saved by an older version of the app (the work state that is remembered between runs) lacks what later versions
  * added: it is filled in with neutral values so that everything that reads the model can rely on it. Returns the same object.
  */
+/** Whether an input port is a stereo pair, from the mode the snapshot gives the port. */
+export function stereoOf(s: Pick<Snapshot, 'inputs'>, source: Source | null): Stereo {
+  if (!source) return null
+  const mode = s.inputs.find((p) => p.grp === source.grp && p.port === source.in)?.mode
+  return mode === 'ST' ? 'ST' : mode === 'M/S' ? 'MS' : null
+}
+
+/** Gives a channel an input (or none) and works out whether that input is stereo. */
+export function setSource(s: Pick<Snapshot, 'inputs'>, c: { source: Source; hasSource: boolean; stereo: Stereo }, source: Source | null): void {
+  c.hasSource = source !== null
+  c.source = source ?? { grp: 'OFF', in: 1 }
+  c.stereo = stereoOf(s, source)
+}
+
 export function ensureModel(s: Snapshot): Snapshot {
   s.inputs ??= []
   s.outputs ??= []
   s.matrices ??= []
   for (const m of s.mains) m.matrix ??= []
   for (const b of s.buses) { b.matrix ??= []; b.mains ??= [] }
-  for (const c of s.channels) { c.sends ??= []; c.mains ??= [] }
+  for (const c of s.channels) { c.sends ??= []; c.mains ??= []; c.stereo ??= stereoOf(s, c.hasSource ? c.source : null) }
+  for (const p of s.inputs) p.mode ??= 'M'
   return s
 }
 
@@ -123,8 +139,10 @@ export function parseSnapshot(raw: unknown): Snapshot {
   const matrices: Matrix[] = numbered(ae.mtx).map(([id, m]) => ({ id, name: str(m.name), mute: bool(m.mute), fader: num(m.fdr, 0) })).filter((m) => m.name !== '')
   const io = obj(ae.io)
   const inputs: InputPort[] = Object.entries(obj(io.in)).flatMap(([grp, ports]) =>
-    numbered(ports).map(([port, p]): InputPort => ({ grp, port, name: str(p.name), gain: num(p.g, 0), phantom: bool(p.vph) })).filter((x) => x.name !== ''))
+    numbered(ports).map(([port, p]): InputPort => ({ grp, port, name: str(p.name), gain: num(p.g, 0), phantom: bool(p.vph), mode: str(p.mode, 'M') })).filter((x) => x.name !== ''))
   const outputs: OutputPatch[] = Object.entries(obj(io.out)).flatMap(([grp, ports]) =>
     numbered(ports).map(([port, x]): OutputPatch => ({ grp, port, source: { grp: str(x.grp, 'OFF'), in: num(x.in, 1) } })).filter((x) => x.source.grp !== 'OFF' && x.source.grp !== ''))
-  return { created: str(root.created), firmware: str(root.creator_fw), channels, buses, mains, matrices, inputs, outputs }
+  const snap: Snapshot = { created: str(root.created), firmware: str(root.creator_fw), channels, buses, mains, matrices, inputs, outputs }
+  for (const c of snap.channels) c.stereo = stereoOf(snap, c.hasSource ? c.source : null)
+  return snap
 }

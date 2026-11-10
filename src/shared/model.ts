@@ -57,6 +57,8 @@ export interface Channel {
   source: Source
   /** False when the input is patched to nothing ("OFF"): the channel is there but silent. */
   hasSource: boolean
+  /** Whether the input is a stereo pair: the channel then takes this port and the next one (see `InputPort.mode`). */
+  stereo: Stereo
   /** Input trim in dB. */
   trim: number
   mute: boolean
@@ -100,7 +102,18 @@ export const OUTPUT_GROUPS: Record<string, number> = { LCL: 8, AUX: 8, A: 48, B:
 export const OUTPUT_SOURCES = ['OFF', 'MAIN', 'MTX', 'BUS', 'MON', ...INPUT_GROUPS] as const
 
 /** One input port of the console with the name and preamp it has in the snapshot. */
-export interface InputPort { grp: string; port: number; name: string; gain: number; phantom: boolean }
+export interface InputPort {
+  grp: string
+  port: number
+  name: string
+  gain: number
+  phantom: boolean
+  /** M = mono, ST = stereo (this port and the next one are left and right), M/S = a mid and a side microphone. */
+  mode: string
+}
+
+/** How a channel takes its input: null = one mono port; ST = a stereo pair of ports (left, right); MS = a mid and side pair. */
+export type Stereo = 'ST' | 'MS' | null
 
 /** What an output port is patched to (`source.grp` OFF = nothing). */
 export interface OutputPatch { grp: string; port: number; source: Source }

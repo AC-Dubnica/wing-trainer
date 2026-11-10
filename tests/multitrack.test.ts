@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import sample from '../fixtures/sample.snap.json'
 import { mapTracks, trackNumber } from '../src/shared/multitrack'
-import { parseSnapshot } from '../src/shared/snapshot'
+import { parseSnapshot, setSource } from '../src/shared/snapshot'
 
 describe('trackNumber', () => {
   it('finds the track in common file names', () => {
@@ -48,5 +48,29 @@ describe('mapTracks', () => {
     expect(m.assigned.map((a) => a.track)).toEqual([3])
     expect(m.unmatched).toHaveLength(3) // nothing is patched to recorder track 1, a text file, and the second file for track 3
     expect(m.unmatched).toEqual(expect.arrayContaining(['Track 01.wav', 'notes.txt']))
+  })
+})
+
+describe('mapTracks with a stereo channel', () => {
+  const snap = parseSnapshot(sample)
+  const piano = snap.channels.find((c) => c.name === 'PIANO')!.id // listens to C 9 and C 10
+  it('plays the track of its input on the left and the next port\'s on the right', () => {
+    const m = mapTracks(snap, ['Track 07.wav', 'Track 08.wav']) // recorder 7 takes C 9, recorder 8 takes C 10
+    expect(m.unmatched).toEqual([])
+    expect(m.assigned.find((a) => a.track === 7)!.placements).toEqual([{ channel: piano, side: 'left' }])
+    expect(m.assigned.find((a) => a.track === 8)!.placements).toEqual([{ channel: piano, side: 'right' }])
+  })
+  it('a mono channel still plays its one track', () => {
+    const m = mapTracks(snap, ['Track 03.wav'])
+    expect(m.assigned[0].placements).toEqual([{ channel: snap.channels.find((c) => c.name === 'SINGER 1')!.id, side: 'mono' }])
+  })
+  it('a channel given another input follows it (mono or stereo)', () => {
+    const now = structuredClone(snap)
+    const c = now.channels.find((x) => x.name === 'SINGER 1')!
+    setSource(now, c, { grp: 'C', in: 9 })
+    expect(c.stereo).toBe('ST')
+    const m = mapTracks(now, ['Track 07.wav', 'Track 08.wav'])
+    expect(m.assigned.find((a) => a.track === 7)!.placements.map((p) => p.side)).toEqual(expect.arrayContaining(['left']))
+    expect(m.assigned.find((a) => a.track === 8)!.placements.find((p) => p.channel === c.id)?.side).toBe('right')
   })
 })

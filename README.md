@@ -34,6 +34,10 @@ git push --follow-tags     # the tag starts .github/workflows/release.yml
 
 The workflow builds the installers on macOS (Apple silicon and Intel), Windows and Linux, and attaches them to a GitHub release for the tag. **Run workflow** on the Actions tab builds them as downloadable files only, without a release. The builds are **not code-signed**, so the first start needs one extra step (the release notes say which). `.github/workflows/ci.yml` runs the types, the unit tests and the build on all three systems for every push, and the sound check under a virtual display on Linux.
 
+## Stereo channels
+
+A channel on a stereo pair of inputs (the piano on `C 9` and `C 10` in the sample) is shown as stereo: **ST** on its strip, the pair `C 9+10` in the diagram, and in the sound it keeps its left and right side. With a recording it plays two tracks, one for each side. Mid/side pairs are marked **M/S** and decoded. See the [user guide](docs/user-guide.md#stereo-channels).
+
 ## Undo and redo
 
 **⌘Z** (Ctrl+Z) undoes and **⌘⇧Z** (Ctrl+Shift+Z, Ctrl+Y) redoes, step by step, for every change you make (a drag of a knob is one step). The ↶ UNDO and REDO ↷ buttons in the top bar do the same. See the [user guide](docs/user-guide.md#undo-and-redo).

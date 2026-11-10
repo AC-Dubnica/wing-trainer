@@ -84,7 +84,7 @@ async function rebuildEngine(): Promise<void> {
   const e = await ensureEngine()
   e.build(cur)
   if (decoded.size) assignRecording()
-  else for (const c of cur.channels) if (c.hasSource) e.setBuffer(c.id, testSignal(e.ctx, c.id))
+  else for (const c of cur.channels) if (c.hasSource) e.setBuffer(c.id, testSignal(e.ctx, c.id, 8, c.stereo !== null))
   for (const [id, buf] of singles) e.setBuffer(id, buf)
   e.setSolo(soloed, cur)
   e.listen(listen)
@@ -94,7 +94,16 @@ async function rebuildEngine(): Promise<void> {
 function assignRecording(): void {
   if (!engine || !decoded.size) return
   for (const c of cur.channels) engine.setBuffer(c.id, null)
-  for (const a of mapTracks(cur, [...decoded.keys()]).assigned) for (const id of a.channels) engine.setBuffer(id, decoded.get(a.file)!)
+  // A mono channel plays its track; a stereo channel plays two (its input's track on the left, the next port's on the right).
+  const sides = new Map<number, { mono?: AudioBuffer; left?: AudioBuffer; right?: AudioBuffer }>()
+  for (const a of mapTracks(cur, [...decoded.keys()]).assigned) {
+    for (const p of a.placements) {
+      const entry = sides.get(p.channel) ?? {}
+      entry[p.side] = decoded.get(a.file)!
+      sides.set(p.channel, entry)
+    }
+  }
+  for (const [id, s] of sides) { if (s.mono) engine.setBuffer(id, s.mono); else engine.setSides(id, s.left ?? null, s.right ?? null) }
   for (const [id, buf] of singles) engine.setBuffer(id, buf)
 }
 
@@ -255,9 +264,10 @@ function commitNow(): void {
 /** Whether two models have the same buses, matrices, channels and send taps: then only the values differ and the audio graph can stay. */
 const structureKey = (s: Snapshot): string => JSON.stringify([s.channels.map((c) => [c.id, c.hasSource, c.sends.map((x) => `${x.bus}${x.pre}`)]), s.buses.map((b) => b.id), s.matrices.map((m) => m.id), s.mains.map((m) => m.id)])
 
-async function goTo(index: number, verb: string): Promise<void> {
+async function goTo(delta: number, verb: string): Promise<void> {
   if (history.restoring) return
-  commitNow() // an edit that has not settled yet is part of the history before it is undone
+  commitNow() // an edit that has not settled yet is part of the history before it is undone (so the step is counted after this)
+  const index = history.index + delta
   if (index < 0 || index >= history.stack.length) { status(verb === 'Undone' ? 'Nothing to undo.' : 'Nothing to redo.'); return }
   history.restoring = true
   try {
@@ -288,8 +298,8 @@ async function goTo(index: number, verb: string): Promise<void> {
   }
   refreshUndo()
 }
-const undo = (): Promise<void> => goTo(history.index - 1, 'Undone')
-const redo = (): Promise<void> => goTo(history.index + 1, 'Redone')
+const undo = (): Promise<void> => goTo(-1, 'Undone')
+const redo = (): Promise<void> => goTo(1, 'Redone')
 
 let undoBtn: HTMLButtonElement | null = null
 let redoBtn: HTMLButtonElement | null = null
@@ -409,7 +419,7 @@ interface Fader {
 
 function faders(): { bank: Fader[]; out: Fader[] } {
   const ch = [...cur.channels].sort((x, y) => order.indexOf(x.id) - order.indexOf(y.id)).map((c): Fader => ({
-    kind: 'ch', id: c.id, name: c.name || `Ch ${c.id}`, color: c.color, sub: c.hasSource ? `${c.source.grp}${c.source.in}` : 'no input', silent: !c.hasSource,
+    kind: 'ch', id: c.id, name: c.name || `Ch ${c.id}`, color: c.color, sub: c.hasSource ? `${c.source.grp}${c.source.in}${c.stereo ? `+${c.source.in + 1}` : ''}` : 'no input', silent: !c.hasSource,
     getFader: () => c.fader, setFader: (v) => { c.fader = v }, getMute: () => c.mute, setMute: (v) => { c.mute = v }, channel: c,
   }))
   const bus = cur.buses.map((b): Fader => ({ kind: 'bus', id: b.id, name: b.name, color: 0, sub: '', silent: false, getFader: () => b.fader, setFader: (v) => { b.fader = v }, getMute: () => b.mute, setMute: (v) => { b.mute = v } }))
@@ -431,13 +441,15 @@ function makeStrip(f: Fader): HTMLElement {
   const meter = el('i')
   const gr = el('div', { class: 'gr' })
   const chips = isCh ? ['G', 'E', 'D'].map((t) => el('span', { class: 'chip', textContent: t })) : []
+  // A channel on a stereo pair of inputs says so on its strip.
+  const stereoChip = f.channel?.stereo ? el('span', { class: 'chip st', textContent: f.channel.stereo === 'MS' ? 'M/S' : 'ST', title: f.channel.stereo === 'MS' ? 'A mid and a side microphone' : `Stereo: the input ports ${f.channel.source.grp} ${f.channel.source.in} and ${f.channel.source.in + 1} are its left and right side` }) : null
   const scale = el('div', { class: 'scale' }, ...SCALE.map((d) => sty(el('span', { textContent: String(d) }), { bottom: `${posOf(d) * 100}%` })))
   const tag = el('div', { class: 'tag', textContent: f.name, title: `${f.kind === 'ch' ? `Channel ${f.id}` : f.kind} ${f.name}` })
   tag.style.background = COLORS[f.color] ?? COLORS[0]
   tag.style.color = LIGHT.has(f.color) ? '#111' : '#fff'
   const root = el('div', { class: `strip ${f.kind}` },
     el('div', { class: 'top' }, el('b', { textContent: isCh ? String(f.id) : f.kind === 'bus' ? `B${f.id}` : f.kind === 'main' ? `M${f.id}` : `MX${f.id}` }), el('span', { textContent: isCh ? f.sub : f.kind === 'main' ? 'MAIN' : f.kind === 'matrix' ? 'MTX' : '' })),
-    el('div', { class: 'chips' }, ...chips), gr,
+    el('div', { class: 'chips' }, ...chips, ...(stereoChip ? [stereoChip] : [])), gr,
     el('div', { class: 'fd' }, scale, fader, el('div', { class: 'vm' }, meter)), db,
     el('div', { class: 'btns' }, mute, solo), tag)
   root.onclick = () => select(f)
@@ -772,7 +784,7 @@ function buildDetail(): void {
   tag.style.color = LIGHT.has(c.color) ? '#111' : '#fff'
   const notes = checkSnapshot({ ...cur, channels: [c] })
   $('detail').replaceChildren(
-    el('div', { class: 'dhead' }, el('span', { class: 'cn', textContent: `CH ${c.id}` }), tag, el('span', { class: 'dim', textContent: c.hasSource ? `input ${c.source.grp}${c.source.in}` : 'no input patched' }),
+    el('div', { class: 'dhead' }, el('span', { class: 'cn', textContent: `CH ${c.id}` }), tag, el('span', { class: 'dim', textContent: c.hasSource ? `input ${c.source.grp}${c.source.in}${c.stereo ? ` + ${c.source.in + 1}, ${c.stereo === 'MS' ? 'mid and side' : 'stereo (left and right)'}` : ''}` : 'no input patched' }),
       ...(notes.length ? [el('span', { class: 'nb', title: notes.map((n) => n.text).join('\n'), textContent: `⚠ ${notes.length}` })] : []),
       el('span', { class: 'grow' }), el<HTMLButtonElement>('button', { class: 'flat', textContent: 'COPY TO A NEW INPUT…', title: 'Make a copy of this channel on a free channel number that listens to another input', onclick: () => showCopy(c) }), el<HTMLButtonElement>('button', { class: 'flat', textContent: 'PLAY A FILE ON THIS CHANNEL…', onclick: () => void openFileOnChannel() })),
     el('div', { class: 'sections' }, ...channelDetail(c)))

@@ -60,3 +60,20 @@ describe('parseRatio', () => {
     expect(parseRatio('nonsense', 2)).toBe(2)
   })
 })
+
+describe('stereo inputs', () => {
+  const s = parseSnapshot(sample)
+  it('reads the mode of the input ports', () => {
+    expect(s.inputs.find((p) => p.grp === 'C' && p.port === 9)?.mode).toBe('ST')
+    expect(s.inputs.find((p) => p.grp === 'C' && p.port === 10)?.mode).toBe('ST')
+    expect(s.inputs.find((p) => p.grp === 'C' && p.port === 2)?.mode).toBe('M')
+    expect(s.inputs.find((p) => p.grp === 'AUX' && p.port === 1)?.mode).toBe('M/S')
+  })
+  it('knows which channels are stereo: the piano (C 9 and C 10), the computer (USB 1 and 2), the external input (mid/side)', () => {
+    expect(s.channels.find((c) => c.name === 'PIANO')!.stereo).toBe('ST')
+    expect(s.channels.find((c) => c.name === 'COMPUTER')!.stereo).toBe('ST')
+    expect(s.channels.find((c) => c.name === 'EXT INPUT')!.stereo).toBe('MS')
+    expect(s.channels.find((c) => c.name === 'SINGER 1')!.stereo).toBeNull()
+    expect(s.channels.find((c) => c.name === 'PREACHER')!.stereo).toBeNull()
+  })
+})

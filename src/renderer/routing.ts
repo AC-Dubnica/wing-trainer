@@ -1,5 +1,6 @@
 import { replacement, toggleConnection } from '../shared/connect'
 import { buildFlow, trace, type FlowEdge, type FlowNode } from '../shared/flow'
+import { setSource } from '../shared/snapshot'
 import { INPUT_GROUPS, INPUT_PORTS, OUTPUT_GROUPS, OUTPUT_SOURCES, type Snapshot } from '../shared/model'
 
 export interface RoutingDeps {
@@ -190,14 +191,14 @@ export function createRouting(root: HTMLElement, deps: RoutingDeps) {
       const port = snap.inputs.find((p) => p.grp === c.source.grp && p.port === c.source.in)
       const bar = el('span', { class: 'chip' })
       bar.style.background = deps.colors[c.color] ?? deps.colors[0]
-      const set = (grp: string, n: number): void => { c.source = { grp, in: n }; c.hasSource = grp !== 'OFF'; changed() }
+      const set = (grp: string, n: number): void => { setSource(snap, c, grp === 'OFF' ? null : { grp, in: n }); changed() }
       const up = el<HTMLButtonElement>('button', { class: 'mini', textContent: '▲', title: 'Move to the left', disabled: i === 0, onclick: () => { deps.move(id, -1); render() } })
       const down = el<HTMLButtonElement>('button', { class: 'mini', textContent: '▼', title: 'Move to the right', disabled: i === all.length - 1, onclick: () => { deps.move(id, 1); render() } })
       return el('tr', {},
         el('td', { class: 'num', textContent: String(i + 1) }), el('td', {}, bar, ` ${c.name || `Ch ${c.id}`}`, el('span', { class: 'dim', textContent: `  ch ${c.id}` })),
         el('td', {}, select(['OFF', ...INPUT_GROUPS], c.hasSource ? c.source.grp : 'OFF', `Input group of ${c.name}`, (v) => set(v, v === 'OFF' ? 1 : Math.min(c.source.in, inputMax(v)))),
           ' ', numberBox(c.source.in, inputMax(c.source.grp), `Input port of ${c.name}`, (v) => set(c.source.grp, v))),
-        el('td', { class: 'dim', textContent: port?.name ? port.name : c.hasSource ? '' : 'nothing' }), el('td', {}, up, down))
+        el('td', { class: 'dim', textContent: `${port?.name ? port.name : c.hasSource ? '' : 'nothing'}${c.stereo ? ` · ${c.stereo === 'MS' ? 'mid/side' : 'stereo'}, ${c.source.grp} ${c.source.in}+${c.source.in + 1}` : ''}` }), el('td', {}, up, down))
     }).filter((r): r is HTMLElement => r !== null)
     return el('div', { class: 'rsec' }, el('div', { class: 'st', textContent: 'FADERS AND INPUTS' }),
       el('div', { class: 'dim note', textContent: 'The order is the order of the faders (▲ ▼ moves a channel left or right). The input is the port the channel listens to: change it to patch a different microphone or recorder track to the fader.' }),

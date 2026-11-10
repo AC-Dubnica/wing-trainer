@@ -62,6 +62,14 @@ const scenario = `(async () => {
   await key('Z', ['meta', 'shift'])
   r.copyRedone = cur().channels.length === before + 1
 
+  // 5b. an undo straight after an edit (before it has settled) takes back that edit only, not one more
+  const m3 = document.querySelectorAll('#bank .strip')[8].querySelector('button.mute')
+  const wasM3 = ch(15).mute
+  const faderNow = ch(13).fader
+  m3.click()
+  await window.trainer.testKey('Z', ['meta']); await w(600) // no pause: the edit was made a moment ago
+  r.quickUndo = { mute: ch(15).mute === wasM3, fader: ch(13).fader === faderNow }
+
   // 6. the whole thing is one history: reset is an undoable step too
   btn('RESET').click(); await settle()
   r.resetDone = cur().channels.length === before
@@ -89,6 +97,7 @@ const checks = [
   ['when there is nothing left to redo it says so', /Nothing to redo/.test(r.nothingToRedo), r.nothingToRedo],
   ['a new change ends the redo', r.redoEndedByChange === true, String(r.redoEndedByChange)],
   ['a copied channel is undone and redone', r.copied && r.copyUndone && r.copyRedone, j([r.copied, r.copyUndone, r.copyRedone])],
+  ['an undo straight after an edit takes back that edit only', r.quickUndo.mute && r.quickUndo.fader, j(r.quickUndo)],
   ['RESET is a step of the history: it can be undone', r.resetDone && r.resetUndone, j([r.resetDone, r.resetUndone])],
 ]
 let failed = 0

@@ -4,9 +4,15 @@ import type { Snapshot } from '../shared/model'
 /** What the speakers (headphones) play: the sum of one output of the console, or the soloed channels. */
 export type Listen = { kind: 'main' | 'bus' | 'matrix'; id: number }
 
+/** What a channel plays: one buffer for a mono channel (or a ready stereo buffer), or a left and a right buffer for a stereo channel. */
+interface Buffers { mono: AudioBuffer | null; left: AudioBuffer | null; right: AudioBuffer | null }
+
 interface Strip {
-  buffer: AudioBuffer | null
-  source: AudioBufferSourceNode | null
+  buffers: Buffers
+  sources: AudioBufferSourceNode[]
+  /** Stereo channels: where the sources go in (a pair of ports is a stereo signal), and the merger that joins a left and a right buffer. */
+  stereoIn: GainNode | null
+  merger: ChannelMergerNode | null
   trim: GainNode
   lowCut: BiquadFilterNode
   highCut: BiquadFilterNode
@@ -98,8 +104,33 @@ export class Engine {
       const lowCut = ctx.createBiquadFilter()
       const highCut = ctx.createBiquadFilter()
       const eq = Array.from({ length: 6 }, () => ctx.createBiquadFilter())
-      const gate = new AudioWorkletNode(ctx, 'gate', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] })
-      const comp = new AudioWorkletNode(ctx, 'compressor', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] })
+      // A channel on a stereo pair of ports keeps two channels all the way through (the gate and compressor detect on the louder side).
+      const width = c.stereo === null ? 1 : 2
+      const gate = new AudioWorkletNode(ctx, 'gate', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [width] })
+      const comp = new AudioWorkletNode(ctx, 'compressor', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [width] })
+      let stereoIn: GainNode | null = null
+      let merger: ChannelMergerNode | null = null
+      if (c.stereo !== null) {
+        stereoIn = ctx.createGain()
+        stereoIn.channelCount = 2
+        stereoIn.channelCountMode = 'explicit'
+        stereoIn.channelInterpretation = 'speakers' // a mono source on a stereo channel is heard on both sides
+        merger = ctx.createChannelMerger(2)
+        merger.connect(stereoIn)
+        if (c.stereo === 'MS') {
+          // Mid and side microphones: left = mid + side, right = mid - side.
+          const split = ctx.createChannelSplitter(2)
+          const toL = ctx.createGain(), toR = ctx.createGain(), sideR = ctx.createGain()
+          sideR.gain.value = -1
+          const out = ctx.createChannelMerger(2)
+          stereoIn.connect(split)
+          split.connect(toL, 0); split.connect(toR, 0) // mid
+          split.connect(toL, 1); split.connect(sideR, 1) // side
+          sideR.connect(toR)
+          toL.connect(out, 0, 0); toR.connect(out, 0, 1)
+          out.connect(trim)
+        } else stereoIn.connect(trim)
+      }
       const preTap = ctx.createGain()
       const fader = ctx.createGain()
       const pan = ctx.createStereoPanner()
@@ -112,7 +143,7 @@ export class Engine {
       postTap.connect(meter)
       postTap.connect(soloSend)
       soloSend.connect(this.soloBus)
-      const strip: Strip = { buffer: null, source: null, trim, lowCut, highCut, eq, gate, comp, preTap, fader, pan, postTap, meter, sends: new Map(), mains: new Map(), soloSend, gateDb: 0, compDb: 0 }
+      const strip: Strip = { buffers: { mono: null, left: null, right: null }, sources: [], stereoIn, merger, trim, lowCut, highCut, eq, gate, comp, preTap, fader, pan, postTap, meter, sends: new Map(), mains: new Map(), soloSend, gateDb: 0, compDb: 0 }
       gate.port.onmessage = (e) => { strip.gateDb = Number(e.data) }
       comp.port.onmessage = (e) => { strip.compDb = Number(e.data) }
       for (const s of c.sends) {
@@ -173,36 +204,54 @@ export class Engine {
     for (const m of s.matrices) { const o = this.matrices.get(m.id); if (o) set(o.fader.gain, m.mute ? 0 : dbToGain(m.fader)) }
   }
 
+  /** What a channel plays: one buffer (a mono track, or a stereo file). */
   setBuffer(channel: number, buffer: AudioBuffer | null): void {
     const st = this.strips.get(channel)
-    if (st) st.buffer = buffer
+    if (st) st.buffers = { mono: buffer, left: null, right: null }
+  }
+
+  /** What a stereo channel plays: a track for each side (a side that is missing is silent; with only one the channel plays it on both). */
+  setSides(channel: number, left: AudioBuffer | null, right: AudioBuffer | null): void {
+    const st = this.strips.get(channel)
+    if (st) st.buffers = { mono: null, left, right }
   }
 
   /** Starts every channel that has something to play, all at the same moment. */
   start(): void {
     this.stop()
     const when = this.ctx.currentTime + 0.05
-    for (const st of this.strips.values()) {
-      if (!st.buffer) continue
+    const play = (st: Strip, buffer: AudioBuffer, to: AudioNode, input = 0): void => {
       const source = this.ctx.createBufferSource()
-      source.buffer = st.buffer
+      source.buffer = buffer
       source.loop = true
-      source.connect(st.trim)
+      source.connect(to, 0, input)
       source.start(when)
-      st.source = source
+      st.sources.push(source)
+    }
+    for (const st of this.strips.values()) {
+      const b = st.buffers
+      if (st.stereoIn && st.merger && b.left && b.right) {
+        play(st, b.left, st.merger, 0) // the two tracks of a pair are the two sides of one signal
+        play(st, b.right, st.merger, 1)
+        continue
+      }
+      const one = b.mono ?? b.left ?? b.right
+      if (one) play(st, one, st.stereoIn ?? st.trim)
     }
   }
 
   stop(): void {
     for (const st of this.strips.values()) {
-      try { st.source?.stop() } catch { /* never started */ }
-      st.source?.disconnect()
-      st.source = null
+      for (const source of st.sources) {
+        try { source.stop() } catch { /* never started */ }
+        source.disconnect()
+      }
+      st.sources = []
     }
   }
 
   get playing(): boolean {
-    return [...this.strips.values()].some((s) => s.source !== null)
+    return [...this.strips.values()].some((s) => s.sources.length > 0)
   }
 
   /** What to listen to. Soloed channels take over while any is soloed. */
@@ -248,7 +297,7 @@ export class Engine {
     this.stop()
     this.connected?.disconnect(this.monitor)
     this.connected = null
-    for (const s of this.strips.values()) { s.trim.disconnect(); s.gate.disconnect(); s.comp.disconnect() }
+    for (const s of this.strips.values()) { s.stereoIn?.disconnect(); s.merger?.disconnect(); s.trim.disconnect(); s.gate.disconnect(); s.comp.disconnect() }
     this.strips.clear()
     this.buses.clear()
     this.mains.clear()
@@ -261,10 +310,14 @@ export class Engine {
  * A stand-in signal for a channel that has no recording: noise in bursts, like speech or strumming, so the gate, the compressor
  * and the meters have something to work on. `seed` makes the rhythm differ from channel to channel.
  */
-export function testSignal(ctx: BaseAudioContext, seed: number, seconds = 8): AudioBuffer {
+export function testSignal(ctx: BaseAudioContext, seed: number, seconds = 8, stereo = false): AudioBuffer {
   const rate = ctx.sampleRate
-  const buffer = ctx.createBuffer(1, Math.floor(rate * seconds), rate)
-  const data = buffer.getChannelData(0)
+  const buffer = ctx.createBuffer(stereo ? 2 : 1, Math.floor(rate * seconds), rate)
+  for (let side = 0; side < buffer.numberOfChannels; side++) fillTestSignal(buffer.getChannelData(side), rate, seed + side * 97)
+  return buffer
+}
+
+function fillTestSignal(data: Float32Array, rate: number, seed: number): void {
   let state = (seed * 2654435761) >>> 0 || 1
   const rand = (): number => { state ^= state << 13; state >>>= 0; state ^= state >>> 17; state ^= state << 5; state >>>= 0; return state / 4294967296 }
   let b0 = 0, b1 = 0, b2 = 0 // pink-ish noise (three one-pole filters)
@@ -279,5 +332,4 @@ export function testSignal(ctx: BaseAudioContext, seed: number, seconds = 8): Au
     const burst = phase < 0.65 ? Math.sin((phase / 0.65) * Math.PI) : 0 // a burst, then silence: something for the gate to close on
     data[i] = pink * (0.02 + 0.5 * burst * burst)
   }
-  return buffer
 }

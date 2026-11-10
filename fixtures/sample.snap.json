@@ -2816,314 +2816,374 @@
      "1": {
       "name": "PREACHER",
       "g": 25,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "2": {
       "name": "SINGER 1",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "3": {
       "name": "SINGER 2",
       "g": 25,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "4": {
       "name": "SINGER 3",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "5": {
       "name": "SINGER 6",
       "g": 25,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "6": {
       "name": "GUITAR",
       "g": 0,
-      "vph": true
+      "vph": true,
+      "mode": "M"
      },
      "7": {
       "name": "CAJON FRONT",
       "g": 20,
-      "vph": true
+      "vph": true,
+      "mode": "M"
      },
      "8": {
       "name": "CAJON REAR",
       "g": 20,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      }
     },
     "AUX": {
      "1": {
       "name": "EXT INPUT",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M/S"
      },
      "2": {
       "name": "EXT INPUT",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M/S"
      }
     },
     "C": {
      "1": {
       "name": "PREACHER",
       "g": 30,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "2": {
       "name": "SINGER 1",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "3": {
       "name": "SINGER 2",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "4": {
       "name": "SINGER 3",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "5": {
       "name": "SINGER 4",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "6": {
       "name": "SINGER 5",
       "g": 30,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "7": {
       "name": "WIRELESS 2",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "8": {
       "name": "WIRELESS 1",
       "g": 22.5,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "9": {
       "name": "PIANO",
       "g": 17.5,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "10": {
       "name": "PIANO",
       "g": 17.5,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "11": {
       "name": "CAJON FRONT",
       "g": 15,
-      "vph": true
+      "vph": true,
+      "mode": "M"
      },
      "12": {
       "name": "CAJON REAR",
       "g": 15,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "13": {
       "name": "BASS",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "14": {
       "name": "GUITAR",
       "g": 7.5,
-      "vph": true
+      "vph": true,
+      "mode": "M"
      },
      "15": {
       "name": "COMPUTER",
       "g": 20,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "16": {
       "name": "COMPUTER",
       "g": 20,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      }
     },
     "SC": {
      "1": {
       "name": "WIRELESS 1",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "2": {
       "name": "WIRELESS 2",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "3": {
       "name": "PIANO",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "4": {
       "name": "PIANO",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "7": {
       "name": "GUITAR",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "8": {
       "name": "BASS",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      }
     },
     "USB": {
      "1": {
       "name": "COMPUTER",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "2": {
       "name": "COMPUTER",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "3": {
       "name": "SINGER 1",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "4": {
       "name": "SINGER 2",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "5": {
       "name": "SINGER 6",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "6": {
       "name": "PIANO MIC",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "7": {
       "name": "PIANO",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "8": {
       "name": "PIANO",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "9": {
       "name": "GUITAR 2",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "10": {
       "name": "BASS",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "11": {
       "name": "CAJON FRONT",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "12": {
       "name": "CAJON REAR",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      }
     },
     "CRD": {
      "3": {
       "name": "SINGER 1",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "4": {
       "name": "SINGER 2",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "5": {
       "name": "SINGER 3+6",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "6": {
       "name": "PIANO MIC",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "7": {
       "name": "PIANO",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "8": {
       "name": "PIANO",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "9": {
       "name": "GUITAR",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "10": {
       "name": "BASS",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "11": {
       "name": "CAJON FRONT",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "12": {
       "name": "CAJON REAR",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "13": {
       "name": "SINGER 4",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "14": {
       "name": "PREACHER",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "15": {
       "name": "WIRELESS 1",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      },
      "16": {
       "name": "WIRELESS 2",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "M"
      }
     },
     "PLAY": {
      "1": {
       "name": "PLAYER",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      },
      "2": {
       "name": "PLAYER",
       "g": 0,
-      "vph": false
+      "vph": false,
+      "mode": "ST"
      }
     }
    },

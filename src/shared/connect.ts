@@ -1,5 +1,6 @@
 import { buildFlow } from './flow'
 import { OFF_DB, type Snapshot } from './model'
+import { setSource } from './snapshot'
 
 /** What a node of the signal-flow diagram is, from its id (`in:C:2`, `ch:13`, `bus:4`, `main:1`, `matrix:1`, `out:USB:3`). */
 export type Ref =
@@ -58,8 +59,7 @@ export function connect(s: Snapshot, aId: string, bId: string): ConnectResult {
     const c = s.channels.find((x) => x.id === to.id)
     if (!c) return { ok: false, message: 'That channel does not exist.' }
     if (c.hasSource && c.source.grp === from.grp && c.source.in === from.port) return { ok: false, message: `${t} already takes ${f}.` }
-    c.source = { grp: from.grp, in: from.port }
-    c.hasSource = true
+    setSource(s, c, { grp: from.grp, in: from.port })
     return { ok: true, message: `${t} now takes ${f}.` }
   }
   if (from.kind === 'ch' && to.kind === 'main') {
@@ -126,8 +126,7 @@ export function disconnect(s: Snapshot, aId: string, bId: string): ConnectResult
   if (from.kind === 'in' && to.kind === 'ch') {
     const c = s.channels.find((x) => x.id === to.id)
     if (!c || !c.hasSource || c.source.grp !== from.grp || c.source.in !== from.port) return not
-    c.hasSource = false
-    c.source = { grp: 'OFF', in: 1 }
+    setSource(s, c, null)
     return { ok: true, message: `${t} no longer takes ${f}: it has no input now.` }
   }
   if ((from.kind === 'ch' || from.kind === 'bus') && to.kind === 'main') {

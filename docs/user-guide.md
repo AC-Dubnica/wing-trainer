@@ -66,6 +66,19 @@ The snapshot says which input each recorder track took, and which channels liste
 
 ![The copy dialog](copy.png)
 
+## Stereo channels
+
+A channel can listen to a **stereo pair** of input ports instead of one mono port (the piano on `C 9` and `C 10` in the sample, a computer on `USB 1` and `USB 2`, a player). The snapshot says so in the mode of the input port (`ST`), and the trainer shows it:
+
+- **On the strip:** the input reads `C9+10` and a blue **ST** mark is next to the G E D lights. A mid and side pair (the external input in the sample, `AUX 1+2`) is marked **M/S**.
+- **In the channel's panel:** the line next to the name says `input C9 + 10, stereo (left and right)`.
+- **In the Routing tab:** the input node reads `C 9+10 (stereo)`; the second port, `C 10`, is shown as "right of C 9" (the recorder takes it as a track of its own). In the table the channel's row says `stereo, C 9+10`.
+- **In the sound:** the channel keeps two sides all the way: the filters, EQ, gate and compressor work on both (the gate and compressor detect on the louder side), **PAN** is a balance, and the sends and the mains get both sides. A mid/side pair is decoded (left = mid + side, right = mid − side). Without a recording the channel plays a stereo test signal.
+- **With a recording:** a stereo channel plays **two tracks**: the track of its input is the left side and the track of the next port is the right side (for the piano, recorder tracks 7 and 8). Name the files `Track 07.wav` and `Track 08.wav` as usual. If only one of them is there, it plays on both sides.
+- **Changing the input:** give a channel an input that is a stereo pair (in the Routing tab) and it becomes stereo; give it a mono one and it becomes mono again. The saved snapshot only holds the input port: the console decides stereo from the port's mode.
+
+Not simulated: the stereo **width** of a channel (it is read but not applied).
+
 ## Buses and matrices: add, rename, remove
 
 Press **BUSES** (next to CHANNELS) to see the buses. The console has 16 buses and 8 matrices; the sample uses 13 and 1.

@@ -1,4 +1,5 @@
 import { MAX_CHANNELS, type Channel, type Snapshot, type Source } from './model'
+import { setSource } from './snapshot'
 
 /** The lowest channel number that is not used yet, or null when all of the console's channels are taken. */
 export function freeChannelId(s: Snapshot): number | null {
@@ -31,8 +32,7 @@ export function duplicateChannel(s: Snapshot, fromId: number, input: Source, nam
   copy.id = id
   copy.copyOf = from.id
   copy.name = (name?.trim() || `${from.name || `Ch ${from.id}`} copy`).slice(0, 16)
-  copy.source = { grp: input.grp, in: input.in }
-  copy.hasSource = true
+  setSource(s, copy, { grp: input.grp, in: input.in })
   s.channels.push(copy)
   s.channels.sort((a, b) => a.id - b.id)
   return { ok: true, channel: copy }

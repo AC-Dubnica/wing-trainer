@@ -19,13 +19,16 @@ const scenario = `(async () => {
     const ctx = new OfflineAudioContext(2, RATE * 3, RATE)
     const e = await Engine.create(ctx)
     e.build(snap)
-    for (const c of snap.channels) if (c.hasSource) e.setBuffer(c.id, testSignal(ctx, c.id))
+    for (const c of snap.channels) if (c.hasSource) e.setBuffer(c.id, testSignal(ctx, c.id, 8, c.stereo !== null))
+    if (opts.setup) opts.setup(e, ctx)
     if (opts.solo) e.setSolo(new Set(opts.solo), snap)
     e.listen(opts.listen || { kind: 'main', id: 1 })
     e.start()
     const out = await ctx.startRendering()
     let sum = 0, n = 0
-    for (let ch = 0; ch < 2; ch++) { const d = out.getChannelData(ch); for (let i = RATE; i < d.length; i++) { sum += d[i] * d[i]; n++ } }
+    const sides = []
+    for (let ch = 0; ch < 2; ch++) { const d = out.getChannelData(ch); let s = 0; for (let i = RATE; i < d.length; i++) { sum += d[i] * d[i]; s += d[i] * d[i]; n++ } sides.push(db(Math.sqrt(s / (n / (ch + 1))))) }
+    render.sides = sides
     return db(Math.sqrt(sum / n))
   }
   /** One channel alone on main 1 at 0 dB with no processing, then "mutate". */
@@ -60,6 +63,19 @@ const scenario = `(async () => {
   r.preSendMutedFader = await render((s) => { toBus(0, true, true)(s); busFaderZero(s); s.channels.find((c) => c.id === 13).fader = -144 }, { listen: { kind: 'bus', id: streamId } })
   // Solo: channel 14 plays on the main; soloing channel 13 (muted on the main) is still heard
   r.soloHeard = await render((s) => { alone(14)(s); alone(13, (c) => { c.mute = false })(s); s.channels.find((x) => x.id === 14).fader = -144 }, { solo: [13] })
+  // Stereo: the piano (channel 18) is on the pair C 9 and C 10, the external input (channel 5) is a mid/side pair
+  const noise = (ctx) => testSignal(ctx, 5)
+  const quiet = (ctx) => ctx.createBuffer(1, RATE * 8, RATE)
+  const stereoOnly = (setup, mutate = () => {}) => render((s) => { alone(18, mutate)(s) }, { setup })
+  await stereoOnly((e, ctx) => e.setSides(18, noise(ctx), quiet(ctx))); r.leftOnly = render.sides
+  await stereoOnly((e, ctx) => e.setSides(18, noise(ctx), quiet(ctx)), (c) => { c.pan = 100 }); r.leftOnlyPannedRight = render.sides
+  await stereoOnly((e, ctx) => e.setBuffer(18, noise(ctx))); r.monoOnStereo = render.sides
+  await stereoOnly(() => {}); r.stereoTest = render.sides
+  await stereoOnly((e, ctx) => e.setSides(18, noise(ctx), quiet(ctx)), (c) => { c.gate.on = true; c.gate.threshold = -90; c.comp.on = true; c.comp.model = 'COMP'; c.comp.threshold = -60; c.comp.ratio = 1.5 }); r.leftOnlyProcessed = render.sides
+  const msOnly = (setup) => render((s) => { alone(5)(s) }, { setup })
+  await msOnly((e, ctx) => e.setSides(5, noise(ctx), quiet(ctx))); r.midOnly = render.sides
+  await msOnly((e, ctx) => e.setSides(5, quiet(ctx), noise(ctx))); r.sideOnly = render.sides
+  await msOnly((e, ctx) => e.setSides(5, noise(ctx), noise(ctx))); r.midEqualsSide = render.sides
   // A main feeding a matrix: the channel is only on main 1, and main 1 sends to matrix 1
   r.mainMatrix = await render((s) => { alone(13)(s); s.matrices.forEach((m) => { m.mute = false; m.fader = 0 }); const main = s.mains.find((m) => m.id === 1); main.matrix = [{ mtx: 1, on: true, level: 0 }]; s.buses.forEach((b) => { b.matrix.forEach((x) => { x.on = false }) }) }, { listen: { kind: 'matrix', id: 1 } })
   // Matrix: STREAM bus -> matrix 1 ("HALL SPEAKERS")
@@ -92,6 +108,14 @@ const checks = [
   ['a send that is off is silent', r.busOffSend < -100, f(r.busOffSend)],
   ['a pre-fader send is not affected by the channel fader', r.preSendMutedFader > -50, f(r.preSendMutedFader)],
   ['solo plays the soloed channel whatever the mix does', r.soloHeard > -50, f(r.soloHeard)],
+  ['a stereo channel keeps its sides apart: a left-only signal is heard on the left only', r.leftOnly[0] > -50 && r.leftOnly[1] < -90, f(r.leftOnly[0]) + ' / ' + f(r.leftOnly[1])],
+  ['the pan of a stereo channel is a balance: panned right, a left-only signal moves to the right side', r.leftOnlyPannedRight[0] < -90 && r.leftOnlyPannedRight[1] > -50, f(r.leftOnlyPannedRight[0]) + ' / ' + f(r.leftOnlyPannedRight[1])],
+  ['a mono source on a stereo channel is heard on both sides, equally', r.monoOnStereo[0] > -50 && Math.abs(r.monoOnStereo[0] - r.monoOnStereo[1]) < 0.5, f(r.monoOnStereo[0]) + ' / ' + f(r.monoOnStereo[1])],
+  ['the test signal of a stereo channel is a stereo one (both sides, not the same)', r.stereoTest[0] > -60 && r.stereoTest[1] > -60 && Math.abs(r.stereoTest[0] - r.stereoTest[1]) > 0.01, f(r.stereoTest[0]) + ' / ' + f(r.stereoTest[1])],
+  ['the gate and the compressor do not collapse a stereo channel to mono', r.leftOnlyProcessed[0] > -50 && r.leftOnlyProcessed[1] < -90, f(r.leftOnlyProcessed[0]) + ' / ' + f(r.leftOnlyProcessed[1])],
+  ['a mid/side pair: a mid signal alone is heard on both sides', r.midOnly[0] > -50 && Math.abs(r.midOnly[0] - r.midOnly[1]) < 0.5, f(r.midOnly[0]) + ' / ' + f(r.midOnly[1])],
+  ['a side signal alone is heard on both sides too (in opposite phase)', r.sideOnly[0] > -50 && Math.abs(r.sideOnly[0] - r.sideOnly[1]) < 0.5, f(r.sideOnly[0]) + ' / ' + f(r.sideOnly[1])],
+  ['the same signal as mid and side lands on the left and cancels on the right', r.midEqualsSide[0] > -45 && r.midEqualsSide[1] < -80, f(r.midEqualsSide[0]) + ' / ' + f(r.midEqualsSide[1])],
   ['a matrix fed by a main carries what the main carries', r.mainMatrix > -50, f(r.mainMatrix)],
   ['the matrix carries what the bus carries', r.matrix > -50, f(r.matrix)],
 ]
