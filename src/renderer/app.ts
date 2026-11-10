@@ -380,7 +380,9 @@ function buildStrips(): void {
   stripUi.clear()
   const { bank, out } = faders()
   const addTile = (label: string, title: string, enabled: boolean, onclick: () => void): HTMLButtonElement => el<HTMLButtonElement>('button', { class: 'addtile', textContent: label, title, disabled: !enabled, onclick })
-  $('bank').replaceChildren(...(layer === 'buses' ? [addTile('+ BUS', freeBusId(cur) === null ? `All ${MAX_BUSES} buses are in use` : 'Add a bus', freeBusId(cur) !== null, () => showAddMix('bus'))] : []), ...bank.map(makeStrip))
+  // The + BUS tile stands at the right end of the buses, outside the part that scrolls, so it is always in sight.
+  $('bank').replaceChildren(...bank.map(makeStrip))
+  $('bankadd').replaceChildren(...(layer === 'buses' ? [addTile('+ BUS', freeBusId(cur) === null ? `All ${MAX_BUSES} buses are in use` : 'Add a bus', freeBusId(cur) !== null, () => showAddMix('bus'))] : []))
   $('outs').replaceChildren(el('div', { class: 'cap', textContent: 'MAIN' }), el('div', { class: 'row2' }, ...out.map(makeStrip), addTile('+ MATRIX', freeMatrixId(cur) === null ? `All ${MAX_MATRICES} matrices are in use` : 'Add a matrix', freeMatrixId(cur) !== null, () => showAddMix('matrix'))))
   refreshAllStrips()
 }

@@ -70,7 +70,7 @@ The snapshot says which input each recorder track took, and which channels liste
 
 Press **BUSES** (next to CHANNELS) to see the buses. The console has 16 buses and 8 matrices; the sample uses 13 and 1.
 
-- **Add:** the dashed **+ BUS** tile at the left of the buses, and **+ MATRIX** next to the mains, open a small dialog for the name. The new bus or matrix takes the lowest free number. **Nothing is sent to it yet:** every channel's send to a new bus is off, and it goes to no main and no matrix. Switch on the sends of the channels that should feed it (the *Sends* section of a channel, or the Routing tab), or, for a matrix, the send of a bus to it (select the bus).
+- **Add:** the dashed **+ BUS** tile at the right end of the buses (it stays in view when the buses scroll), and **+ MATRIX** next to the mains, open a small dialog for the name. The new bus or matrix takes the lowest free number. **Nothing is sent to it yet:** every channel's send to a new bus is off, and it goes to no main and no matrix. Switch on the sends of the channels that should feed it (the *Sends* section of a channel, or the Routing tab), or, for a matrix, the send of a bus to it (select the bus).
 - **Rename:** select a bus or matrix strip and change the **Name** box in the panel below (at most 16 characters).
 - **Remove:** **REMOVE THIS BUS…** (or matrix) asks first and says how many channels send to it and how many output ports carry it. Removing it switches those sends off and unpatches those outputs. **RESET** brings it back.
 - All of it shows in **CHANGES** (`Bus 14 MON SINGER 6: Added`, `Bus 4 STREAM: Name STREAM -> WEB STREAM`, `Bus 9 DELAY: Removed`).
