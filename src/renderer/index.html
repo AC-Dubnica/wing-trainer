@@ -24,6 +24,7 @@
       .badge { background: var(--amber); color: #111; border-radius: 8px; padding: 0 6px; font-size: 10px; font-weight: 800; margin-left: 6px }
       .outmeter { width: 90px; height: 8px; background: #05070a; border: 1px solid var(--line); border-radius: 2px; overflow: hidden } .outmeter > i { display: block; height: 100%; width: 0; background: linear-gradient(to right, #2fc46e 0 70%, #f2c744 70% 88%, #ef4444 88%); background-size: 90px 100% }
 
+      [hidden] { display: none !important }
       main { min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(345px, 42vh) minmax(0, 1fr) }
       /* scrollbars that can be seen (the system's thin ones hide themselves, and the screen looks cut off) */
       *::-webkit-scrollbar { width: 12px; height: 12px } *::-webkit-scrollbar-track { background: #07090b } *::-webkit-scrollbar-thumb { background: #2f3742; border-radius: 6px; border: 2px solid #07090b } *::-webkit-scrollbar-thumb:hover { background: #3d4756 } *::-webkit-scrollbar-corner { background: #07090b }
@@ -52,6 +53,20 @@
       .strip .tag { padding: 6px 4px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase }
       .strip.bus, .strip.main, .strip.matrix { flex-basis: 84px }
 
+      /* routing tab */
+      #routing { min-height: 0; min-width: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(360px, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0; background: #0c0f13 }
+      .rleft { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line) } .rright { min-width: 0; overflow: auto; padding: 10px 14px 16px }
+      .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--dim) } .legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle } .sendsw { color: var(--text); cursor: pointer }
+      .flowscroll { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px } .flowwrap { position: relative; display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 0 56px; align-items: start; min-width: 760px }
+      .flowsvg { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible }
+      .fcol { display: flex; flex-direction: column; gap: 5px; position: relative; z-index: 1 } .fct { font-size: 10px; letter-spacing: .18em; color: var(--dim); font-weight: 700; margin-bottom: 2px; position: sticky; top: 0 }
+      .fnode { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px 4px 12px; cursor: pointer; min-height: 34px } .fnode:hover { border-color: #3d4756 } .fnode.sel { border-color: #fff; box-shadow: 0 0 0 1px #fff } .fnode.dim { opacity: .25 } .fnode.muted .fl { text-decoration: line-through; color: var(--dim) }
+      .fnode .fbar { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 4px 0 0 4px } .fnode .fl { font-weight: 700; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis } .fnode .fs { font-size: 10px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+      .fnode.in, .fnode.out { padding-left: 8px } .fnode.bus { border-left: 3px solid var(--amber) } .fnode.main { border-left: 3px solid var(--blue) } .fnode.matrix { border-left: 3px solid #a070c8 } .fnode.out { border-left: 3px solid var(--green) }
+      .rsec { margin-bottom: 18px } .rtab { border-collapse: collapse; width: 100% } .rtab th, .rtab td { padding: 3px 6px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap } .rtab th { color: var(--dim); font-weight: 600; font-size: 10px; letter-spacing: .08em } .rtab td.num { color: var(--dim); width: 28px } .rtab tr.add td { border-bottom: 0; padding-top: 8px }
+      .rtab input[type=number] { width: 54px; background: var(--raised); border: 1px solid var(--line); border-radius: 3px; color: var(--text); padding: 2px 4px; font: inherit } .rtab .chip { display: inline-block; width: 8px; height: 12px; border-radius: 2px; vertical-align: -2px }
+      .mini { background: #1a1f26; border: 1px solid #2a313b; border-radius: 3px; padding: 1px 7px; font-size: 11px; margin-right: 3px } .mini.wide { font-weight: 800; letter-spacing: .06em; padding: 3px 10px } .rsec .note { margin-bottom: 8px; max-width: none }
+
       /* detail */
       #detail { min-width: 0; overflow: auto; padding: 10px 12px 14px; background: #0c0f13 }
       .dhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px } .cn { font-weight: 800; letter-spacing: .12em; font-size: 14px } .ctag { padding: 3px 12px; border-radius: 3px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em }
@@ -77,10 +92,11 @@
   </head>
   <body>
     <header id="top"></header>
-    <main>
+    <main id="consoleView">
       <section id="console" aria-label="Faders"><div id="bank"></div><div id="outs"></div></section>
       <section id="detail" aria-label="Selected channel"></section>
     </main>
+    <main id="routing" hidden></main>
     <footer id="status"><span id="msg"></span><span id="src"></span></footer>
     <dialog id="dlg"></dialog>
     <script src="app.js"></script>

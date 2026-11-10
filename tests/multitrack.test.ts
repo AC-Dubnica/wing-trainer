@@ -13,6 +13,23 @@ describe('trackNumber', () => {
   })
 })
 
+describe('mapTracks after the routing is changed', () => {
+  const snap = parseSnapshot(sample)
+  it('moves a track to another fader when the channel takes another input', () => {
+    const now = structuredClone(snap)
+    now.channels.find((c) => c.id === 13)!.source = { grp: 'C', in: 3 } // SINGER 1 now listens to what SINGER 2 had
+    const m = mapTracks(now, ['Track 03.wav', 'Track 04.wav'])
+    expect(m.assigned.find((a) => a.track === 4)?.channels).toEqual([13, 14]) // both now take input C 3, which is recorder track 4
+    expect(m.unmatched).toContain('Track 03.wav') // nobody takes C 2 any more
+  })
+  it('follows the recorder patch: track 3 can be given another input', () => {
+    const now = structuredClone(snap)
+    now.outputs.find((o) => o.grp === 'USB' && o.port === 3)!.source = { grp: 'C', in: 1 }
+    const preacher = now.channels.find((c) => c.name === 'PREACHER')!.id
+    expect(mapTracks(now, ['Track 03.wav']).assigned[0].channels).toEqual([preacher])
+  })
+})
+
 describe('mapTracks', () => {
   const snap = parseSnapshot(sample)
   it('places a recorder track on the channel patched to the input it recorded', () => {

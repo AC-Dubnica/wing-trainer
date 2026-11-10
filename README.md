@@ -30,6 +30,19 @@ git push --follow-tags     # the tag starts .github/workflows/release.yml
 
 The workflow builds the installers on macOS (Apple silicon and Intel), Windows and Linux, and attaches them to a GitHub release for the tag. **Run workflow** on the Actions tab builds them as downloadable files only, without a release. The builds are **not code-signed**, so the first start needs one extra step (the release notes say which). `.github/workflows/ci.yml` runs the types, the unit tests and the build on all three systems for every push, and the sound check under a virtual display on Linux.
 
+## The Routing tab
+
+![The Routing tab: the path of one channel through the venue](docs/routing.png)
+
+**ROUTING** (next to CONSOLE at the top) shows how the whole venue is organised, drawn from the snapshot: the **input ports** (the stage box, the aux input, the USB and the player), the **channels**, the **mixes** (buses, mains, the matrix) and the **output ports** (stage box outputs, aux, the recorder tracks, AES/EBU). Click a channel, a mix or an output to light up its whole path, both ways: where its signal comes from and every output it reaches. Bus sends are drawn only for what you click, or all of them with **show all bus sends**.
+
+The same tab lets you **remap** without a console:
+
+- **Faders and inputs:** move a channel left or right (▲ ▼) to change the order of the faders, and change the **input** a channel listens to (the group and the port). When a recording is open, the tracks follow: give a channel another input and the track recorded on that input plays on it.
+- **Outputs:** change what each output port carries, unpatch one (×) or patch a new one. The USB outputs are the recorder tracks, so changing them changes which recorded track plays on which fader.
+
+It all works on the snapshot in the app, with nothing connected: the trainer never talks to a console. What you remap shows in **Changes** (and **Reset** undoes it), so you can repeat it on the real console.
+
 ## How to use it
 
 1. **Open snapshot…** loads a `.snap` file saved by the console (JSON). Your own snapshot stays on your computer and is never copied anywhere; `*.snap` files are ignored by git.

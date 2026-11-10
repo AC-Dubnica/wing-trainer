@@ -9,6 +9,7 @@ import { mapTracks } from '../shared/multitrack'
 import { parseSnapshot } from '../shared/snapshot'
 import { dbAt, FADER_MAX, FADER_MIN, posOf } from '../shared/fader'
 import { Engine, testSignal, type Listen } from './engine'
+import { createRouting } from './routing'
 
 declare global { interface Window { trainer: TrainerApi; app: unknown } }
 
@@ -31,6 +32,13 @@ let engine: Engine | null = null
 let ctx: AudioContext | null = null
 let selected = 0
 let layer: 'channels' | 'buses' = 'channels'
+let view: 'console' | 'routing' = 'console'
+/** Channel ids in the order of the faders. */
+let order: number[] = []
+let baseOrder: number[] = []
+/** The decoded tracks of the open recording by file name, and single files played on one channel. */
+const decoded = new Map<string, AudioBuffer>()
+const singles = new Map<number, AudioBuffer>()
 let redraw: (() => void)[] = []
 let listen: Listen = { kind: 'main', id: 1 }
 const soloed = new Set<number>()
@@ -64,9 +72,19 @@ async function ensureEngine(): Promise<Engine> {
 async function rebuildEngine(): Promise<void> {
   const e = await ensureEngine()
   e.build(cur)
-  for (const c of cur.channels) if (c.hasSource && !recording) e.setBuffer(c.id, testSignal(e.ctx, c.id))
+  if (decoded.size) assignRecording()
+  else for (const c of cur.channels) if (c.hasSource) e.setBuffer(c.id, testSignal(e.ctx, c.id))
+  for (const [id, buf] of singles) e.setBuffer(id, buf)
   e.setSolo(soloed, cur)
   e.listen(listen)
+}
+
+/** Puts the tracks of the open recording on the channels, as the snapshot's routing says (so a changed input or recorder patch moves a track to another fader). */
+function assignRecording(): void {
+  if (!engine || !decoded.size) return
+  for (const c of cur.channels) engine.setBuffer(c.id, null)
+  for (const a of mapTracks(cur, [...decoded.keys()]).assigned) for (const id of a.channels) engine.setBuffer(id, decoded.get(a.file)!)
+  for (const [id, buf] of singles) engine.setBuffer(id, buf)
 }
 
 /** Called after every edit (it is defined with the screen, below). */
@@ -81,12 +99,17 @@ async function useSnapshot(snap: Snapshot, name: string): Promise<void> {
   cur = structuredClone(snap)
   sourceName = name
   recording = ''
+  decoded.clear()
+  singles.clear()
   soloed.clear()
+  order = cur.channels.map((c) => c.id)
+  baseOrder = [...order]
   selected = cur.channels.find((c) => c.hasSource)?.id ?? cur.channels[0]?.id ?? 0
   listen = { kind: 'main', id: cur.mains[0]?.id ?? 1 }
   buildStrips()
   buildTop()
   buildDetail()
+  routing.render()
   await rebuildEngine()
   status(`Loaded ${name}: ${cur.channels.length} channels, ${cur.buses.length} buses. Every channel plays a test signal until you open a recording.`)
 }
@@ -114,18 +137,18 @@ async function openRecording(): Promise<void> {
   if (!mapping.assigned.length) { status(`None of the ${r.files.length} files could be placed on a channel. Name the tracks like "Track 03.wav": the number is the console's USB recorder track.`); return }
   status(`Reading ${mapping.assigned.length} tracks...`)
   recording = r.dir
-  for (const c of cur.channels) e.setBuffer(c.id, null)
+  decoded.clear()
   const byName = new Map(r.files.map((f) => [f.name, f]))
   let failed = 0
   for (const a of mapping.assigned) {
     try {
-      const buf = await decode(byName.get(a.file)!.path)
-      for (const id of a.channels) e.setBuffer(id, buf)
+      decoded.set(a.file, await decode(byName.get(a.file)!.path))
     } catch (err) {
       failed++
       status(`Could not read ${a.file}: ${(err as Error).message}`)
     }
   }
+  assignRecording()
   if (e.playing) e.start()
   const names = (ids: number[]) => ids.map((id) => channel(id)?.name ?? id).join(', ')
   status(`Recording: ${mapping.assigned.length - failed} tracks placed (${mapping.assigned.map((a) => `${a.track} → ${names(a.channels)}`).join('; ')})${mapping.unmatched.length ? `. Not placed: ${mapping.unmatched.join(', ')}` : ''}.`)
@@ -134,6 +157,8 @@ async function openRecording(): Promise<void> {
 
 async function useTestSignals(): Promise<void> {
   recording = ''
+  decoded.clear()
+  singles.clear()
   await rebuildEngine()
   refreshTop()
   status('Every channel plays a test signal again.')
@@ -146,13 +171,49 @@ async function openFileOnChannel(): Promise<void> {
   if (!f) return
   try {
     const e = await ensureEngine()
-    e.setBuffer(c.id, await decode(f.path))
+    const buf = await decode(f.path)
+    singles.set(c.id, buf)
+    e.setBuffer(c.id, buf)
     recording = recording || '(single files)'
     if (e.playing) e.start()
     status(`${f.name} plays on channel ${c.id} ${c.name}.`)
   } catch (err) {
     status(`Could not read ${f.name}: ${(err as Error).message}`)
   }
+}
+
+// --- views ---------------------------------------------------------------------------------------------------------------
+
+const routing = createRouting($('routing'), {
+  snap: () => cur,
+  order: () => order,
+  move: (id, delta) => {
+    const i = order.indexOf(id)
+    const j = i + delta
+    if (i < 0 || j < 0 || j >= order.length) return
+    ;[order[i], order[j]] = [order[j], order[i]]
+    buildStrips()
+    refreshTop()
+  },
+  edited: () => {
+    assignRecording()
+    if (engine?.playing) engine.start()
+    buildStrips()
+    refreshAllStrips()
+    refreshTop()
+    if (channel()) buildDetail()
+  },
+  selectChannel: (id) => { selected = id; selectedOut = '' },
+  colors: COLORS,
+  lightColors: LIGHT,
+})
+
+function setView(v: typeof view): void {
+  view = v
+  $('consoleView').hidden = v !== 'console'
+  $('routing').hidden = v !== 'routing'
+  buildTop()
+  if (v === 'routing') routing.render()
 }
 
 // --- strips --------------------------------------------------------------------------------------------------------------
@@ -173,7 +234,7 @@ interface Fader {
 }
 
 function faders(): { bank: Fader[]; out: Fader[] } {
-  const ch = cur.channels.map((c): Fader => ({
+  const ch = [...cur.channels].sort((x, y) => order.indexOf(x.id) - order.indexOf(y.id)).map((c): Fader => ({
     kind: 'ch', id: c.id, name: c.name || `Ch ${c.id}`, color: c.color, sub: c.hasSource ? `${c.source.grp}${c.source.in}` : 'no input', silent: !c.hasSource,
     getFader: () => c.fader, setFader: (v) => { c.fader = v }, getMute: () => c.mute, setMute: (v) => { c.mute = v }, channel: c,
   }))
@@ -534,10 +595,12 @@ function buildTop(): void {
   select.setAttribute('aria-label', 'Listen to')
   select.onchange = () => { const [kind, id] = select.value.split(':'); listen = { kind: kind as Listen['kind'], id: Number(id) }; engine?.listen(listen); refreshAllStrips() }
   outMeter = el('i')
+  const viewBtn = (id: typeof view, label: string) => el<HTMLButtonElement>('button', { class: `tab ${view === id ? 'on' : ''}`, textContent: label, onclick: () => setView(id) })
   const layerBtn = (id: typeof layer, label: string) => el<HTMLButtonElement>('button', { class: `tab ${layer === id ? 'on' : ''}`, textContent: label, onclick: () => { layer = id; buildStrips(); buildTop() } })
   $('top').replaceChildren(
     el('div', { class: 'brand' }, el('b', { textContent: 'WING' }), el('span', { textContent: 'TRAINER' })),
-    el('div', { class: 'tabs' }, layerBtn('channels', 'CHANNELS'), layerBtn('buses', 'BUSES')),
+    el('div', { class: 'tabs views' }, viewBtn('console', 'CONSOLE'), viewBtn('routing', 'ROUTING')),
+    ...(view === 'console' ? [el('div', { class: 'tabs' }, layerBtn('channels', 'CHANNELS'), layerBtn('buses', 'BUSES'))] : []),
     el('span', { class: 'sep' }), playBtn,
     el('label', { class: 'lst', textContent: 'LISTEN ' }, select), el('div', { class: 'outmeter' }, outMeter),
     el('span', { class: 'grow' }),
@@ -551,7 +614,7 @@ function buildTop(): void {
 
 function refreshTop(): void {
   const findings = checkSnapshot(cur).length
-  const changes = diffSnapshots(base, cur).length
+  const changes = diffSnapshots(base, cur).length + (order.join() !== baseOrder.join() ? 1 : 0)
   checksBtn.replaceChildren('CHECKS', ...(findings ? [el('span', { class: 'badge', textContent: String(findings) })] : []))
   changesBtn.replaceChildren('CHANGES', ...(changes ? [el('span', { class: 'badge', textContent: String(changes) })] : []))
   $('src').textContent = `${sourceName}${recording ? ' · recording' : ' · test signals'}`
@@ -569,9 +632,11 @@ async function togglePlay(): Promise<void> {
 
 async function reset(): Promise<void> {
   cur = structuredClone(base)
+  order = [...baseOrder]
   soloed.clear()
   buildStrips()
   buildDetail()
+  routing.render()
   await rebuildEngine()
   refreshTop()
   status('Back to the snapshot as it was loaded.')
@@ -594,6 +659,7 @@ function showChecks(): void {
 
 function showChanges(): void {
   const lines = diffSnapshots(base, cur).map(describeChange)
+  if (order.join() !== baseOrder.join()) lines.push(`Fader order: ${order.map((id) => channel(id)?.name || id).join(', ')}`)
   const copy = el<HTMLButtonElement>('button', { class: 'flat', textContent: 'COPY', onclick: () => void navigator.clipboard.writeText(lines.join('\n')) })
   dialog('What you changed', el('div', {}, el('p', { class: 'dim', textContent: 'The trainer does not write snapshots. Make these changes on the console to use them.' }), ...(lines.length ? lines.map((l) => el('div', { class: 'finding', textContent: l })) : [el('div', { class: 'dim', textContent: 'Nothing changed yet.' })])), lines.length ? [copy] : [])
 }

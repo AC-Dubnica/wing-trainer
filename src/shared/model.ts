@@ -82,6 +82,19 @@ export interface Matrix { id: number; name: string; mute: boolean; fader: number
 /** One recorder track: which console input the USB (or card) recorder takes as its track number `track`. */
 export interface RecorderTrack { track: number; source: Source }
 
+/** The ports of the console's input groups (LCL = local XLR inputs, AUX, A/B/C = the three AES50 ports, SC = StageConnect, USB, CRD = card, ...). */
+export const INPUT_GROUPS = ['LCL', 'AUX', 'A', 'B', 'C', 'SC', 'USB', 'CRD', 'MOD', 'PLAY', 'AES', 'USR', 'OSC'] as const
+/** How many ports each output group has. */
+export const OUTPUT_GROUPS: Record<string, number> = { LCL: 8, AUX: 8, A: 48, B: 48, C: 48, SC: 32, USB: 48, CRD: 64, MOD: 64, REC: 4, AES: 2 }
+/** What an output can carry: a main, a matrix, a bus, the console monitor, or an input passed straight through (any input group). */
+export const OUTPUT_SOURCES = ['OFF', 'MAIN', 'MTX', 'BUS', 'MON', ...INPUT_GROUPS] as const
+
+/** One input port of the console with the name and preamp it has in the snapshot. */
+export interface InputPort { grp: string; port: number; name: string; gain: number; phantom: boolean }
+
+/** What an output port is patched to (`source.grp` OFF = nothing). */
+export interface OutputPatch { grp: string; port: number; source: Source }
+
 export interface Snapshot {
   /** When and with which firmware the console saved it, if it says. */
   created: string
@@ -90,5 +103,8 @@ export interface Snapshot {
   buses: Bus[]
   mains: Main[]
   matrices: Matrix[]
-  usbOut: RecorderTrack[]
+  /** Input ports that have a name in the snapshot. */
+  inputs: InputPort[]
+  /** The patched outputs (those set to OFF are left out). */
+  outputs: OutputPatch[]
 }

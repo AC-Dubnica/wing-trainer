@@ -34,7 +34,7 @@ describe('parseSnapshot', () => {
   it('reads the sends of the STREAM bus to the matrix, and the recorder patch', () => {
     const stream = s.buses.find((b) => b.name === 'STREAM')!
     expect(stream.matrix.find((m) => m.mtx === 1)?.on).toBe(true)
-    expect(s.usbOut.find((t) => t.track === 14)?.source).toEqual({ grp: 'C', in: 1 })
+    expect(s.outputs.find((o) => o.grp === 'USB' && o.port === 14)?.source).toEqual({ grp: 'C', in: 1 })
   })
 
   it('has no secrets or names in the sample: it is anonymised', () => {

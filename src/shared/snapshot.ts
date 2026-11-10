@@ -1,4 +1,4 @@
-import { OFF_DB, type Bus, type Channel, type Comp, type Eq, type EqBand, type Gate, type MainSend, type Main, type Matrix, type MatrixSend, type RecorderTrack, type Send, type Snapshot, type Source } from './model'
+import { OFF_DB, type Bus, type Channel, type Comp, type Eq, type EqBand, type Gate, type InputPort, type MainSend, type Main, type Matrix, type MatrixSend, type OutputPatch, type Send, type Snapshot, type Source } from './model'
 
 type Json = Record<string, unknown>
 
@@ -107,7 +107,10 @@ export function parseSnapshot(raw: unknown): Snapshot {
   const buses = numbered(ae.bus).map(([id, b]) => parseBus(id, b)).filter((b) => b.name !== '')
   const mains: Main[] = numbered(ae.main).map(([id, m]) => ({ id, name: str(m.name) || `MAIN ${id}`, mute: bool(m.mute), fader: num(m.fdr, 0) })).filter((m) => m.id <= 2 || m.name !== `MAIN ${m.id}`)
   const matrices: Matrix[] = numbered(ae.mtx).map(([id, m]) => ({ id, name: str(m.name), mute: bool(m.mute), fader: num(m.fdr, 0) })).filter((m) => m.name !== '')
-  const usb = obj(obj(obj(ae.io).out).USB)
-  const usbOut: RecorderTrack[] = numbered(usb).filter(([, x]) => str(x.grp) !== 'OFF' && str(x.grp) !== '').map(([track, x]) => ({ track, source: { grp: str(x.grp), in: num(x.in, 1) } }))
-  return { created: str(root.created), firmware: str(root.creator_fw), channels, buses, mains, matrices, usbOut }
+  const io = obj(ae.io)
+  const inputs: InputPort[] = Object.entries(obj(io.in)).flatMap(([grp, ports]) =>
+    numbered(ports).map(([port, p]): InputPort => ({ grp, port, name: str(p.name), gain: num(p.g, 0), phantom: bool(p.vph) })).filter((x) => x.name !== ''))
+  const outputs: OutputPatch[] = Object.entries(obj(io.out)).flatMap(([grp, ports]) =>
+    numbered(ports).map(([port, x]): OutputPatch => ({ grp, port, source: { grp: str(x.grp, 'OFF'), in: num(x.in, 1) } })).filter((x) => x.source.grp !== 'OFF' && x.source.grp !== ''))
+  return { created: str(root.created), firmware: str(root.creator_fw), channels, buses, mains, matrices, inputs, outputs }
 }

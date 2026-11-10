@@ -19,7 +19,7 @@ type Values = Record<string, string>
 
 function channelValues(c: Channel): Values {
   const v: Values = {
-    Fader: db(c.fader), Mute: onoff(c.mute), Trim: db(c.trim), Pan: plain(c.pan),
+    Input: c.hasSource ? `${c.source.grp} ${c.source.in}` : 'none', Fader: db(c.fader), Mute: onoff(c.mute), Trim: db(c.trim), Pan: plain(c.pan),
     'Low cut': `${onoff(c.filters.lowCut.on)} ${hz(c.filters.lowCut.freq)}`,
     'High cut': `${onoff(c.filters.highCut.on)} ${hz(c.filters.highCut.freq)}`,
     EQ: onoff(c.eq.on),
@@ -55,6 +55,15 @@ export function diffSnapshots(base: Snapshot, now: Snapshot): Change[] {
   for (const m of now.mains) {
     const was = base.mains.find((x) => x.id === m.id)
     if (was) out.push(...compare(`Main ${m.id} ${m.name}`, mainValues(was), mainValues(m)))
+  }
+  // Output patching: every output that is patched in either snapshot.
+  const patchOf = (s: Snapshot, grp: string, port: number): string => { const o = s.outputs.find((x) => x.grp === grp && x.port === port); return o ? `${o.source.grp} ${o.source.in}` : 'off' }
+  const outputs = new Set([...base.outputs, ...now.outputs].map((o) => `${o.grp}:${o.port}`))
+  for (const key of outputs) {
+    const [grp, port] = key.split(':')
+    const a = patchOf(base, grp, Number(port))
+    const b = patchOf(now, grp, Number(port))
+    if (a !== b) out.push({ where: `Output ${grp} ${port}`, what: 'Source', from: a, to: b })
   }
   return out
 }

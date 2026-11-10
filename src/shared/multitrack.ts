@@ -1,4 +1,4 @@
-import type { Snapshot } from './model'
+import type { RecorderTrack, Snapshot } from './model'
 
 /** The track number in a recording's file name: the last group of one to three digits ("Track 03.wav", "20260517_07.wav", "ch12"). */
 export function trackNumber(fileName: string): number | null {
@@ -8,6 +8,9 @@ export function trackNumber(fileName: string): number | null {
   const last = groups[groups.length - 1]
   return last.length <= 3 ? Number(last) : null
 }
+
+/** The recorder's tracks: the USB outputs that are patched, with the input each one takes. */
+export const recorderTracks = (s: Snapshot): RecorderTrack[] => s.outputs.filter((o) => o.grp === 'USB').map((o) => ({ track: o.port, source: o.source }))
 
 export interface TrackAssignment {
   file: string
@@ -32,7 +35,7 @@ export function mapTracks(snapshot: Snapshot, files: string[]): TrackMapping {
   const used = new Set<number>()
   for (const file of [...files].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
     const track = trackNumber(file)
-    const out = track === null ? undefined : snapshot.usbOut.find((o) => o.track === track)
+    const out = track === null ? undefined : recorderTracks(snapshot).find((o) => o.track === track)
     const channels = out ? snapshot.channels.filter((c) => c.hasSource && c.source.grp === out.source.grp && c.source.in === out.source.in).map((c) => c.id) : []
     if (track === null || !channels.length || used.has(track)) { unmatched.push(file); continue }
     used.add(track)
